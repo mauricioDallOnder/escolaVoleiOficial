@@ -1,35 +1,21 @@
-import React, { useCallback, useContext, useEffect, useState } from "react";
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+import * as React from "react";
+import { TextField, Button, Box, Autocomplete, Typography, Modal } from "@mui/material";
 import { useForm, SubmitHandler } from "react-hook-form";
-import {
-  TextField,
-  Button,
-  Box,
-  Autocomplete,
-  Typography,
-  Modal,
-} from "@mui/material";
 import { DataContext } from "@/context/context";
-import {
-  Modalidade,
-  TemporaryMoveStudentsPayload,
-  Turma,
-} from "@/interface/interfaces";
+import { TemporaryMoveStudentsPayload, Turma } from "@/interface/interfaces";
 import { BoxStyleCadastro } from "@/utils/Styles";
-
 import { CorrigirDadosDefinitivos } from "@/utils/CorrigirDadosTurmasEmComponetes";
-
 
 function MoveAllStudents({
   alunoNome,
   nomeDaTurmaOrigem,
-  modalidadeOrigem,
 }: {
   alunoNome: string;
   nomeDaTurmaOrigem: string;
-  modalidadeOrigem: string;
 }) {
-  const { moveStudentTemp, modalidades, fetchModalidades } =
-    useContext(DataContext);
+  const { moveStudentTemp, modalidades, fetchModalidades } = React.useContext(DataContext);
   const {
     register,
     handleSubmit,
@@ -38,52 +24,43 @@ function MoveAllStudents({
     reset,
     formState: { isSubmitting, errors },
   } = useForm<TemporaryMoveStudentsPayload>();
-  const [turmasDestinoOptions, setTurmasDestinoOptions] = useState<Turma[]>([]);
-  const [modalidadesOptions, setModalidadesOptions] = useState<Modalidade[]>(
-    []
-  );
-  const [open, setOpen] = useState<boolean>(false);
+  const [turmasDestinoOptions, setTurmasDestinoOptions] = React.useState<Turma[]>([]);
+  const [open, setOpen] = React.useState<boolean>(false);
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
-  useEffect(() => {
+  // Buscar modalidades (única modalidade) para obter as turmas disponíveis
+  React.useEffect(() => {
     fetchModalidades().catch(console.error);
   }, [fetchModalidades]);
 
-  useEffect(() => {
-    setModalidadesOptions(modalidades);
+  // Quando as modalidades são atualizadas, define as opções de turmas de destino
+  React.useEffect(() => {
+    if (modalidades && modalidades.length > 0) {
+      setTurmasDestinoOptions(modalidades[0].turmas || []);
+    }
   }, [modalidades]);
 
-  useEffect(() => {
-    const modalidadeSelecionada = modalidades.find(
-      (mod) => mod.nome === watch("modalidadeDestino")
-    );
-    setTurmasDestinoOptions(modalidadeSelecionada?.turmas || []);
-  }, [watch("modalidadeDestino"), modalidades]);
-
-  const onSubmit: SubmitHandler<TemporaryMoveStudentsPayload> = useCallback(
+  const onSubmit: SubmitHandler<TemporaryMoveStudentsPayload> = React.useCallback(
     async (data) => {
       try {
         const payload: TemporaryMoveStudentsPayload = {
           alunoNome: data.alunoNome,
-          modalidadeOrigem: data.modalidadeOrigem,
           nomeDaTurmaOrigem: data.nomeDaTurmaOrigem,
-          modalidadeDestino: watch("modalidadeDestino"),
           nomeDaTurmaDestino: watch("nomeDaTurmaDestino"),
         };
         await moveStudentTemp(payload);
 
         // Ajustar dados da turma de origem e destino
-        await CorrigirDadosDefinitivos()
+        await CorrigirDadosDefinitivos();
 
         reset();
-       
       } catch (error) {
         console.error("Erro ao mover aluno", error);
         alert("Erro ao mover aluno.");
       }
     },
-    [moveStudentTemp, reset, modalidadeOrigem, nomeDaTurmaOrigem, watch]
+    [moveStudentTemp, reset, watch]
   );
 
   return (
@@ -120,40 +97,10 @@ function MoveAllStudents({
           <TextField
             margin="normal"
             fullWidth
-            {...register("modalidadeOrigem")}
-            label="Modalidade de Origem(não alterar!)"
-            value={modalidadeOrigem}
-            InputLabelProps={{ shrink: true }}
-          />
-          <TextField
-            margin="normal"
-            fullWidth
             {...register("nomeDaTurmaOrigem")}
-            label="Turma de Origem(não alterar!)"
+            label="Turma de Origem (não alterar!)"
             value={nomeDaTurmaOrigem}
             InputLabelProps={{ shrink: true }}
-          />
-          <Autocomplete
-            options={modalidadesOptions}
-            getOptionLabel={(option) => option.nome}
-            onChange={(_, newValue) =>
-              setValue("modalidadeDestino", newValue?.nome ?? "")
-            }
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                {...register("modalidadeDestino")}
-                label="Modalidade de Destino"
-                margin="normal"
-                required
-                fullWidth
-                error={!!errors.modalidadeDestino}
-                helperText={
-                  errors.modalidadeDestino?.message ||
-                  "Selecione a modalidade de destino"
-                }
-              />
-            )}
           />
           <Autocomplete
             options={turmasDestinoOptions}
@@ -178,9 +125,7 @@ function MoveAllStudents({
             )}
           />
           <Button type="submit" variant="contained" disabled={isSubmitting}>
-            {isSubmitting
-              ? "Enviando dados aguarde..."
-              : " Mudar turma"}
+            {isSubmitting ? "Enviando dados, aguarde..." : "Mudar turma"}
           </Button>
         </Box>
       </Modal>
@@ -191,7 +136,6 @@ function MoveAllStudents({
 interface MoveAllStudentsProps {
   alunoNome: string;
   nomeDaTurmaOrigem: string;
-  modalidadeOrigem: string;
 }
 
 function areEqual(
@@ -200,8 +144,7 @@ function areEqual(
 ) {
   return (
     prevProps.alunoNome === nextProps.alunoNome &&
-    prevProps.nomeDaTurmaOrigem === nextProps.nomeDaTurmaOrigem &&
-    prevProps.modalidadeOrigem === nextProps.modalidadeOrigem
+    prevProps.nomeDaTurmaOrigem === nextProps.nomeDaTurmaOrigem
   );
 }
 

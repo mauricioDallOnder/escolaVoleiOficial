@@ -21,11 +21,11 @@ import { Aluno, StudentPresenceTableProps } from "@/interface/interfaces";
 import { DataContext } from "@/context/context";
 import { modalStyle } from "@/utils/Styles";
 import { ListaDeChamadaModal } from "./ListaDeChamadaModal";
-import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-export const ListaDeChamada: React.FC<StudentPresenceTableProps> = ({
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+
+export const ListaDeChamada: React.FC<Omit<StudentPresenceTableProps, "modalidade">> = ({
   alunosDaTurma,
   setAlunosDaTurma,
-  modalidade,
   nomeDaTurma,
 }) => {
   const { updateAttendanceInApi } = useContext(DataContext);
@@ -65,10 +65,10 @@ export const ListaDeChamada: React.FC<StudentPresenceTableProps> = ({
   const daysInMonth =
     alunosDaTurma.length > 0
       ? Object.keys(
-        alunosDaTurma.find((aluno) => aluno !== null)?.presencas[
-        selectedMonth
-        ] || {}
-      )
+          alunosDaTurma.find((aluno) => aluno !== null)?.presencas[
+            selectedMonth
+          ] || {}
+        )
       : [];
 
   const handleOpenModal = (aluno: Aluno) => {
@@ -91,10 +91,9 @@ export const ListaDeChamada: React.FC<StudentPresenceTableProps> = ({
 
   useEffect(() => {
     const searchTermLowercased = search.toLowerCase();
-    const filtered = filteredAlunosFind.filter(
-      (aluno) =>
-        aluno.nome.toLowerCase().includes(searchTermLowercased) ||
-        nomeDaTurma.toLowerCase().includes(searchTermLowercased)
+    const filtered = filteredAlunosFind.filter((aluno) =>
+      aluno.nome.toLowerCase().includes(searchTermLowercased) ||
+      nomeDaTurma.toLowerCase().includes(searchTermLowercased)
     );
     setFilteredAlunos(filtered);
   }, [search, filteredAlunosFind, nomeDaTurma]);
@@ -111,10 +110,9 @@ export const ListaDeChamada: React.FC<StudentPresenceTableProps> = ({
             },
           };
 
+          // Atualização dos dados do aluno sem a propriedade "modalidade"
           const alunoUpdateData = {
             ...student,
-            modalidade: modalidade,
-            nomeDaTurma: nomeDaTurma,
             alunoId: alunoId.toString(),
             presencas: updatedAttendance,
           };
@@ -162,16 +160,19 @@ export const ListaDeChamada: React.FC<StudentPresenceTableProps> = ({
             {selectedAluno && (
               <>
                 {isAvisoValid(selectedAluno) && selectedAluno.avisos && (
-                  <Box sx={{ backgroundColor: "#ffd700", padding: "8px", marginBottom: "16px" }}>
+                  <Box
+                    sx={{
+                      backgroundColor: "#ffd700",
+                      padding: "8px",
+                      marginBottom: "16px",
+                    }}
+                  >
                     <Typography variant="body1" sx={{ fontWeight: "bold" }}>
                       Aviso: {selectedAluno.avisos.textaviso}
                     </Typography>
                   </Box>
                 )}
-                <ListaDeChamadaModal
-                  aluno={selectedAluno}
-                  month={selectedMonth}
-                />
+                <ListaDeChamadaModal aluno={selectedAluno} month={selectedMonth} />
               </>
             )}
             <Box sx={{ backgroundColor: "red" }}>
@@ -196,7 +197,7 @@ export const ListaDeChamada: React.FC<StudentPresenceTableProps> = ({
           onChange={(e) => setSelectedMonth(e.target.value)}
           fullWidth
         >
-           <MenuItem value="janeiro">Janeiro</MenuItem>
+          <MenuItem value="janeiro">Janeiro</MenuItem>
           <MenuItem value="fevereiro">Fevereiro</MenuItem>
           <MenuItem value="março">Março</MenuItem>
           <MenuItem value="abril">Abril</MenuItem>
@@ -257,7 +258,6 @@ export const ListaDeChamada: React.FC<StudentPresenceTableProps> = ({
                 "& tbody tr:nth-of-type(odd)": {
                   backgroundColor: "rgba(247, 247, 247, 1)",
                 },
-
               }}
             >
               <TableHead>
@@ -293,88 +293,80 @@ export const ListaDeChamada: React.FC<StudentPresenceTableProps> = ({
                   </TableCell>
                 </TableRow>
               </TableHead>
-             <TableBody>
-  {filteredAlunos.map((aluno, index) => {
-    const hasValidAviso = isAvisoValid(aluno);
+              <TableBody>
+                {filteredAlunos.map((aluno) => {
+                  const hasValidAviso = isAvisoValid(aluno);
+                  return (
+                    <TableRow
+                      key={aluno.nome}
+                      sx={{
+                        "& > *": { borderBottom: "unset" },
+                        backgroundColor: hasValidAviso ? "#ffeb3b" : "inherit",
+                      }}
+                    >
+                      {hasValidAviso ? (
+                        <TableCell
+                          sx={{
+                            backgroundColor: "inherit",
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
+                            }}
+                          >
+                            <WarningAmberIcon color="error" />
+                            <Typography
+                              sx={{
+                                color: "red",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              {aluno.nome}
+                            </Typography>
+                            <WarningAmberIcon color="error" />
+                          </Box>
+                        </TableCell>
+                      ) : (
+                        <TableCell
+                          sx={{
+                            fontWeight: "bold",
+                            color: "inherit",
+                          }}
+                        >
+                          {aluno.nome}
+                        </TableCell>
+                      )}
 
-    return (
-      <TableRow
-        key={aluno.nome}
-        sx={{
-          "& > *": { borderBottom: "unset" },
-          // Fundo da linha amarelo se tiver aviso
-          backgroundColor: hasValidAviso ? "#ffeb3b" : "inherit",
-        }}
-      >
-        {hasValidAviso ? (
-          <TableCell
-            // Removemos o background #b71c1c para não sobrescrever a cor da fonte
-            sx={{
-              // Se preferir, poderia usar backgroundColor: 'inherit'
-              // se não quiser outra cor no cell
-              backgroundColor: "inherit",
-            }}
-          >
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: "4px", // espaçamento horizontal
-              }}
-            >
-              {/* Texto em vermelho e negrito, com ▲ antes e depois */}
-               <WarningAmberIcon color="error" />
-              <Typography
-                sx={{
-                  color: "red",
-                  fontWeight: "bold",
-                }}
-              >
-                 {aluno.nome} 
-              </Typography>
-              {/* Ícone de alerta */}
-              <WarningAmberIcon color="error" />
-            </Box>
-          </TableCell>
-        ) : (
-          <TableCell
-            sx={{
-              fontWeight: "bold",
-              color: "inherit",
-            }}
-          >
-            {aluno.nome}
-          </TableCell>
-        )}
-
-        <TableCell
-          align="center"
-          sx={{ color: "black", fontWeight: "bold" }}
-          onClick={() => toggleAttendance(aluno.id, selectedDay)}
-        >
-          {aluno.presencas[selectedMonth][selectedDay] ? "." : "F"}
-        </TableCell>
-        <TableCell onClick={() => handleOpenModal(aluno)}>
-          <Button
-            sx={{
-              width: "fit-content",
-              fontSize: "12px",
-              backgroundColor: hasValidAviso ? "#d32f2f" : "#1976d2",
-              color: "white",
-              "&:hover": {
-                backgroundColor: hasValidAviso ? "#b71c1c" : "#1565c0",
-              },
-            }}
-            variant="contained"
-          >
-            {hasValidAviso ? "Ver Aviso" : "Ver Detalhes"}
-          </Button>
-        </TableCell>
-      </TableRow>
-    );
-  })}
-</TableBody>
-
+                      <TableCell
+                        align="center"
+                        sx={{ color: "black", fontWeight: "bold" }}
+                        onClick={() => toggleAttendance(aluno.id, selectedDay)}
+                      >
+                        {aluno.presencas[selectedMonth][selectedDay] ? "." : "F"}
+                      </TableCell>
+                      <TableCell onClick={() => handleOpenModal(aluno)}>
+                        <Button
+                          sx={{
+                            width: "fit-content",
+                            fontSize: "12px",
+                            backgroundColor: hasValidAviso ? "#d32f2f" : "#1976d2",
+                            color: "white",
+                            "&:hover": {
+                              backgroundColor: hasValidAviso ? "#b71c1c" : "#1565c0",
+                            },
+                          }}
+                          variant="contained"
+                        >
+                          {hasValidAviso ? "Ver Aviso" : "Ver Detalhes"}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
             </Table>
           </TableContainer>
         )}

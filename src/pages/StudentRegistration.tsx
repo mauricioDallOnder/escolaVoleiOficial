@@ -2,7 +2,6 @@
 import { useForm, SubmitHandler } from "react-hook-form";
 import {
   FormValuesStudent,
-  SelecaoModalidadeTurma,
   Turma,
   formValuesStudentSchema,
 } from "@/interface/interfaces";
@@ -41,8 +40,9 @@ import { storage } from "../config/firestoreConfig";
 import resizeImage from "../utils/Constants";
 import { v4 as uuidv4 } from "uuid";
 import { zodResolver } from "@hookform/resolvers/zod";
-import axios from 'axios';
+import axios from "axios";
 import { CorrigirDadosDefinitivos } from "@/utils/CorrigirDadosTurmasEmComponetes";
+
 export default function StudentRegistration() {
   const {
     register,
@@ -52,20 +52,17 @@ export default function StudentRegistration() {
   } = useForm<FormValuesStudent>({
     resolver: zodResolver(formValuesStudentSchema),
     defaultValues: {
-      modalidade: "", 
-      turmaSelecionada: "", 
+      turmaSelecionada: "",
       aluno: {
         informacoesAdicionais: {
-          uniforme: "", 
+          uniforme: "",
         },
-       
       },
-     
     },
   });
-  const { modalidades, fetchModalidades, sendDataToApi } = useData(); // Usando o hook useData
+  const { modalidades, fetchModalidades, sendDataToApi } = useData();
 
-  // upload de imagem----------------------------
+  // Upload de imagem
   const [isUploading, setIsUploading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -82,7 +79,6 @@ export default function StudentRegistration() {
       setAvatarUrl(resizedImageUrl);
       console.log("onFileChange - Imagem processada");
     } catch (error) {
-      console.error(error);
       console.error("onFileChange - Erro", error);
     }
   };
@@ -90,189 +86,19 @@ export default function StudentRegistration() {
   useEffect(() => {
     fetchModalidades();
   }, [fetchModalidades]);
-  // ----------------------------------------------------------------------------
-  // seleção de modalidades
 
-  const [selecoes, setSelecoes] = useState<SelecaoModalidadeTurma[]>([
-    {
-      modalidade: "",
-      nucleo: "",
-      turma: "",
-      turmasDisponiveis: [],
-    },
-  ]);
-
-  // Função para adicionar nova seleção de modalidade e turma
-  const adicionarSelecao = () => {
-    setSelecoes((prevSelecoes) => [
-      ...prevSelecoes,
-      {
-        modalidade: "",
-        nucleo: "",
-        turma: "",
-        turmasDisponiveis: [],
-      },
-    ]);
-  };
-
-  // Função para atualizar seleções de modalidade, núcleo e turma
-  const atualizarSelecao = (
-    index: number,
-    campo: keyof SelecaoModalidadeTurma,
-    valor: string | Turma[]
-  ) => {
-    setSelecoes((prevSelecoes) => {
-      return prevSelecoes.map((selecao, idx) => {
-        if (idx === index) {
-          if (campo === "turmasDisponiveis" && Array.isArray(valor)) {
-            // Garantindo que valor é um array de Turma para o campo 'turmasDisponiveis'
-            return { ...selecao, [campo]: valor };
-          } else if (typeof valor === "string") {
-            // Para campos 'modalidade', 'nucleo' e 'turma', o valor é uma string
-            const novaSelecao = { ...selecao, [campo]: valor };
-
-            // Se o campo for 'nucleo', atualiza as turmas disponíveis
-            if (campo === "nucleo") {
-              const modalidadeSelecionada = novaSelecao.modalidade;
-              const turmasFiltradas = atualizarTurmasDisponiveis(
-                modalidadeSelecionada,
-                valor,
-                index
-              );
-              novaSelecao.turmasDisponiveis! = turmasFiltradas;
-            }
-
-            // Se o campo for 'modalidade', reset 'nucleo' e 'turma'
-            if (campo === "modalidade") {
-              novaSelecao.nucleo = "";
-              novaSelecao.turma = "";
-              novaSelecao.turmasDisponiveis = [];
-            }
-
-            return novaSelecao;
-          }
-        }
-        return selecao;
-      });
-    });
-  };
-
-  const atualizarTurmasDisponiveis = (
-    modalidade: string,
-    nucleo: string,
-    index: number
-  ): Turma[] => {
-    // Suponha que essa função retorne as turmas filtradas baseadas na modalidade e no núcleo
-    const turmas = modalidades.find((m) => m.nome === modalidade)?.turmas ?? [];
-    return turmas.filter((turma) => turma.nucleo === nucleo);
-  };
-
-  const removerSelecao = (index: number) => {
-    setSelecoes((prevSelecoes) =>
-      prevSelecoes.filter((_, idx) => idx !== index)
-    );
-  };
-  const key = uuidv4();
-  // Função para gerar os seletores de modalidade, núcleo e turma
-  const renderizarSeletores = () => {
-    return selecoes.map((selecao, index) => (
-      <Grid container spacing={2} key={index}>
-        <Grid item xs={12} sm={4}>
-          <TextField
-            sx={{ marginTop: "12px" }}
-            select
-            label="Modalidade"
-            fullWidth
-            variant="outlined"
-            value={selecao.modalidade}
-            onChange={(e) =>
-              atualizarSelecao(index, "modalidade", e.target.value)
-            }
-            required
-          >
-            {modalidades
-              .filter(
-                (modalidade) =>
-                  modalidade.nome !== "temporarios" &&
-                  modalidade.nome !== "arquivados" &&
-                  modalidade.nome !== "excluidos"
-              )
-              .map((modalidade) => (
-                <MenuItem key={modalidade.nome} value={modalidade.nome}>
-                  {modalidade.nome}
-                </MenuItem>
-              ))}
-          </TextField>
-        </Grid>
-        <Grid item xs={12} sm={4}>
-          <TextField
-            sx={{ marginTop: "12px" }}
-            select
-            label="Local de treinamento"
-            fullWidth
-            variant="outlined"
-            value={selecao.nucleo}
-            onChange={(e) => atualizarSelecao(index, "nucleo", e.target.value)}
-            required
-          >
-            {selecao.modalidade &&
-              modalidades
-                .find((m) => m.nome === selecao.modalidade)
-                ?.turmas.map((turma) => turma.nucleo)
-                .filter((value, index, self) => self.indexOf(value) === index) // Remove duplicatas
-                .map((nucleo) => (
-                  <MenuItem key={nucleo} value={nucleo}>
-                    {nucleo}
-                  </MenuItem>
-                ))}
-          </TextField>
-        </Grid>
-        <Grid item xs={12} sm={4}>
-          <TextField
-            sx={{ marginTop: "12px" }}
-            select
-            label="Turma"
-            fullWidth
-            variant="outlined"
-            value={selecao.turma}
-            onChange={(e) => atualizarSelecao(index, "turma", e.target.value)}
-            required
-          >
-            {selecao.turmasDisponiveis!.map((turma, index) => (
-              <MenuItem
-                key={`${turma.nome_da_turma}-${index}`}
-                value={turma.nome_da_turma}
-              >
-                {turma.nome_da_turma}
-              </MenuItem>
-            ))}
-          </TextField>
-        </Grid>
-        <Grid item xs={2} sm={1}>
-          <Button
-            variant="contained"
-            color="error"
-            sx={{ mb: "5px" }}
-            onClick={() => removerSelecao(index)}
-            disabled={selecoes.length === 1}
-          >
-            Remover
-          </Button>
-        </Grid>
-        {index < selecoes.length - 1 && (
-          <Divider sx={{ width: "100%", my: 2 }} />
-        )}
-      </Grid>
-    ));
-  };
+  // Como só existe uma modalidade, pegamos a primeira
+  const singleModalidade = modalidades && modalidades[0];
+  const turmasDisponiveis: Turma[] = singleModalidade ? singleModalidade.turmas : [];
 
   const onSubmit: SubmitHandler<FormValuesStudent> = async (formData) => {
     console.log("onSubmit - Início");
 
-    if (selecoes.length === 0) {
-      alert("Por favor, adicione pelo menos uma modalidade e turma.");
+    if (!formData.turmaSelecionada) {
+      alert("Por favor, selecione uma turma.");
       return;
     }
+
     let fotoUrl = "";
     if (file) {
       setIsUploading(true);
@@ -294,8 +120,7 @@ export default function StudentRegistration() {
             async () => {
               const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
               setIsUploading(false);
-              // Use a URL obtida aqui como valor para o campo 'foto'
-              fotoUrl = downloadURL; // Atualize a lógica conforme necessário
+              fotoUrl = downloadURL;
               resolve(downloadURL);
             }
           );
@@ -303,37 +128,35 @@ export default function StudentRegistration() {
       } catch (error) {
         console.error("Falha no upload:", error);
         setIsUploading(false);
-        // Gerenciar erro de upload aqui
         return;
       }
     }
 
-    // Preparar dados para enviar, incluindo a URL da imagem carregada
-
     const mydate = new Date(Date.now()).toLocaleString().split(",")[0];
-    const uniforme = false
+    const uniforme = false;
     formData.aluno.dataMatricula = mydate;
     formData.aluno.informacoesAdicionais.hasUniforme = uniforme;
-    formData.aluno.informacoesAdicionais.IdentificadorUnico = uuidv4()
-    const dataParaProcessar = selecoes.map((selecao) => ({
-      ...formData, // Espalha os dados do formulário
-      modalidade: selecao.modalidade,
-      turmaSelecionada: selecao.turma,
-      aluno: {
-        ...formData.aluno,
-        foto: fotoUrl, // Assegure-se de que esta é a URL do Firebase
+    formData.aluno.informacoesAdicionais.IdentificadorUnico = uuidv4();
+
+    // Prepara os dados para envio. Incluímos a modalidade fixa (a única disponível) e a turma selecionada.
+    const dataParaProcessar = [
+      {
+        ...formData,
+        modalidade: singleModalidade ? singleModalidade.nome : "",
+        aluno: {
+          ...formData.aluno,
+          foto: fotoUrl,
+        },
       },
-    }));
+    ];
 
     try {
       const { resultados } = await sendDataToApi(dataParaProcessar);
-      // Verificar se todos os cadastros foram bem-sucedidos
       const todosSucessos = resultados.every((resultado) => resultado.sucesso);
       if (todosSucessos) {
         alert("Todos os cadastros foram efetuados com sucesso!");
         resetFormulario();
       } else {
-        // Processar e exibir mensagens de erro específicas
         const mensagensErro = resultados
           .filter((resultado) => !resultado.sucesso)
           .map((resultado) => resultado.erro)
@@ -348,13 +171,8 @@ export default function StudentRegistration() {
     }
   };
 
-  
-  // Função para resetar o formulário e estados relacionados
   const resetFormulario = () => {
-    reset(); // Reseta o formulário usando react-hook-form
-    setSelecoes([
-      { modalidade: "", nucleo: "", turma: "", turmasDisponiveis: [] },
-    ]); // Reseta as seleções
+    reset();
     setFile(null);
     setAvatarUrl("");
     setIsUploading(false);
@@ -381,26 +199,25 @@ export default function StudentRegistration() {
                       fullWidth
                       label={label}
                       variant="standard"
-                      error={Boolean(getErrorMessage(errors, id))} // Verifica se existe erro
-                      helperText={getErrorMessage(errors, id)} // Mostra a mensagem de erro
+                      error={Boolean(getErrorMessage(errors, id))}
+                      helperText={getErrorMessage(errors, id)}
                       {...register(id as keyof FormValuesStudent)}
                     />
                   </Grid>
                 ))}
-
                 <Grid item xs={12} sm={6}>
                   <Box
                     sx={{
                       border: "1px dashed grey",
-                      borderRadius: "4px", // Se você quiser cantos arredondados, senão remova esta linha
+                      borderRadius: "4px",
                       display: "flex",
                       flexDirection: "column",
                       alignItems: "center",
                       justifyContent: "center",
-                      width: "100%", // Largura total do contêiner
-                      height: "200px", // Ajuste conforme necessário para altura
-                      overflow: "hidden", // Isso garantirá que a imagem não ultrapasse a caixa
-                      position: "relative", // Posicionamento relativo para elementos internos absolutos
+                      width: "100%",
+                      height: "200px",
+                      overflow: "hidden",
+                      position: "relative",
                       "&:hover": {
                         backgroundColor: "#f0f0f0",
                         cursor: "pointer",
@@ -413,18 +230,18 @@ export default function StudentRegistration() {
                           src={avatarUrl}
                           alt="Avatar"
                           style={{
-                            width: "100%", // Isso fará com que a imagem preencha a largura da caixa
-                            height: "100%", // Isso fará com que a imagem preencha a altura da caixa
-                            objectFit: "cover", // Isso fará com que a imagem cubra todo o espaço disponível, cortando o excesso
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
                           }}
                         />
                         <Box
                           sx={{
-                            position: "absolute", // Posicionamento absoluto para sobrepor a imagem
+                            position: "absolute",
                             bottom: 0,
                             left: 0,
                             width: "100%",
-                            backgroundColor: "rgba(0, 0, 0, 0.5)", // Fundo translúcido para o texto ser legível
+                            backgroundColor: "rgba(0, 0, 0, 0.5)",
                             color: "white",
                             textAlign: "center",
                             p: "8px",
@@ -479,11 +296,9 @@ export default function StudentRegistration() {
                       id={id}
                       label={label}
                       variant="standard"
-                      sx={{
-                        borderRadius: "4px",
-                      }}
-                      error={Boolean(getErrorMessage(errors, id))} // Verifica se existe erro
-                      helperText={getErrorMessage(errors, id)} // Mostra a mensagem de erro
+                      sx={{ borderRadius: "4px" }}
+                      error={Boolean(getErrorMessage(errors, id))}
+                      helperText={getErrorMessage(errors, id)}
                       {...register(id as keyof FormValuesStudent)}
                     />
                   </Grid>
@@ -503,12 +318,10 @@ export default function StudentRegistration() {
                       id={id}
                       label={label}
                       variant="standard"
-                      sx={{
-                        borderRadius: "4px",
-                      }}
+                      sx={{ borderRadius: "4px" }}
                       required
-                      error={Boolean(getErrorMessage(errors, id))} // Verifica se existe erro
-                      helperText={getErrorMessage(errors, id)} // Mostra a mensagem de erro
+                      error={Boolean(getErrorMessage(errors, id))}
+                      helperText={getErrorMessage(errors, id)}
                       {...register(id as keyof FormValuesStudent)}
                     />
                   </Grid>
@@ -518,12 +331,8 @@ export default function StudentRegistration() {
                     fullWidth
                     label="Complemento"
                     variant="standard"
-                    sx={{
-                      borderRadius: "4px",
-                    }}
-                    {...register(
-                      "aluno.informacoesAdicionais.endereco.complemento"
-                    )} // asserção de tipo aqui
+                    sx={{ borderRadius: "4px" }}
+                    {...register("aluno.informacoesAdicionais.endereco.complemento")}
                   />
                 </Grid>
               </Grid>
@@ -541,13 +350,11 @@ export default function StudentRegistration() {
                       id={id}
                       label={label}
                       variant="standard"
-                      sx={{
-                        borderRadius: "4px",
-                      }}
-                      error={Boolean(getErrorMessage(errors, id))} // Verifica se existe erro
-                      helperText={getErrorMessage(errors, id)} // Mostra a mensagem de erro
+                      sx={{ borderRadius: "4px" }}
+                      error={Boolean(getErrorMessage(errors, id))}
+                      helperText={getErrorMessage(errors, id)}
                       required
-                      {...register(id as keyof FormValuesStudent)} // asserção de tipo aqui
+                      {...register(id as keyof FormValuesStudent)}
                     />
                   </Grid>
                 ))}
@@ -566,13 +373,11 @@ export default function StudentRegistration() {
                       id={id}
                       label={label}
                       variant="standard"
-                      sx={{
-                        borderRadius: "4px",
-                      }}
-                      error={Boolean(getErrorMessage(errors, id))} // Verifica se existe erro
-                      helperText={getErrorMessage(errors, id)} // Mostra a mensagem de erro
+                      sx={{ borderRadius: "4px" }}
+                      error={Boolean(getErrorMessage(errors, id))}
+                      helperText={getErrorMessage(errors, id)}
                       required
-                      {...register(id as keyof FormValuesStudent)} // asserção de tipo aqui
+                      {...register(id as keyof FormValuesStudent)}
                     />
                   </Grid>
                 ))}
@@ -592,7 +397,7 @@ export default function StudentRegistration() {
                     variant="outlined"
                     fullWidth
                     required
-                    {...register("aluno.informacoesAdicionais.uniforme")} // asserção de tipo aqui
+                    {...register("aluno.informacoesAdicionais.uniforme")}
                     helperText="Selecione o tamanho do uniforme"
                     error={!!errors.aluno?.informacoesAdicionais?.uniforme}
                   >
@@ -606,10 +411,7 @@ export default function StudentRegistration() {
                       { value: "M adulto", label: "M adulto" },
                       { value: "G adulto", label: "G adulto" },
                       { value: "GG adulto", label: "GG adulto" },
-                      {
-                        value: "Outro",
-                        label: "Outro (informar pelo Whatsapp)",
-                      },
+                      { value: "Outro", label: "Outro (informar pelo Whatsapp)" },
                     ].map((option) => (
                       <MenuItem key={option.value} value={option.value}>
                         {option.label}
@@ -622,24 +424,27 @@ export default function StudentRegistration() {
 
             <List sx={ListStyle}>
               <Typography sx={TituloSecaoStyle}>
-                Seção 8 - Escolha de Modalidades e Turmas
+                Seção 8 - Escolha da Turma
               </Typography>
               <Grid container spacing={2}>
-                {renderizarSeletores()}
-                <Divider sx={{ width: "100%", my: 2 }} />
-                <Grid item xs={12}>
-                  <Button
-                    variant="contained"
-                    onClick={adicionarSelecao}
-                    disabled={selecoes.length >= 3} // Desabilita o botão se já existirem 3 ou mais seleções
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    select
+                    label="Turma"
+                    fullWidth
+                    variant="outlined"
+                    defaultValue=""
+                    {...register("turmaSelecionada", { required: true })}
                   >
-                    Adicionar Modalidade/Turma
-                  </Button>
-                  {selecoes.length >= 3 && ( // Exibe a mensagem se o limite for atingido
-                    <Typography color="error" sx={{ mt: 2 }}>
-                      Para mais de 3 horários, entre em contato conosco
-                    </Typography>
-                  )}
+                    {turmasDisponiveis.map((turma, index) => (
+                      <MenuItem
+                        key={`${turma.nome_da_turma}-${index}`}
+                        value={turma.nome_da_turma}
+                      >
+                        {turma.nome_da_turma}
+                      </MenuItem>
+                    ))}
+                  </TextField>
                 </Grid>
               </Grid>
             </List>
@@ -698,8 +503,7 @@ export default function StudentRegistration() {
             </List>
             {avatarUrl === "" ? (
               <Button variant="contained" color="error" disabled>
-                É necessário adicionar uma foto do atleta para concluir o
-                cadastro!
+                É necessário adicionar uma foto do atleta para concluir o cadastro!
               </Button>
             ) : (
               <Button

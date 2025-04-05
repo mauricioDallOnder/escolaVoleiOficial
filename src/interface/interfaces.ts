@@ -1,7 +1,8 @@
 import { anoNascimentoSchema } from '@/utils/Constants'
 import { Key } from 'react'
 import { z } from 'zod'
-// Definindo schema para os campos do formulario de registro
+
+// Definindo schema para os campos do formulário de registro
 
 // Esquema para Endereço
 const enderecoSchema = z.object({
@@ -39,7 +40,7 @@ const pagadorMensalidadesSchema = z.object({
   ]),
   email: z
     .string()
-    .email({ message: 'E-mail invalido' })
+    .email({ message: 'E-mail inválido' })
     .transform((str) => str.trim()),
   celularWhatsapp: z.union([
     z.string().min(11, { message: 'O telefone deve conter 11 dígitos.' }),
@@ -47,7 +48,7 @@ const pagadorMensalidadesSchema = z.object({
   ]),
 })
 
-// Esquema para Informações Adicionais, completo com todos os campos
+// Esquema para Informações Adicionais, com os campos completos
 const informacoesAdicionaisSchema = z.object({
   endereco: enderecoSchema,
   pagadorMensalidades: pagadorMensalidadesSchema,
@@ -86,13 +87,13 @@ const informacoesAdicionaisSchema = z.object({
   uniforme: z.string(),
 })
 
-// Esquema para Aluno, agora incluindo todos os campos
+// Esquema para Aluno, incluindo todos os campos necessários
 const alunoSchema = z.object({
-  informacoesAdicionais: informacoesAdicionaisSchema, // Assumindo que este esquema já foi definido
+  informacoesAdicionais: informacoesAdicionaisSchema,
   nome: z
     .string()
     .min(3, { message: 'O nome deve ter pelo menos 3 caracteres.' })
-    .transform((str) => str.trim()), // Transformação aplicada aqui
+    .transform((str) => str.trim()),
   anoNascimento: anoNascimentoSchema,
   telefoneComWhatsapp: z.union([
     z.string().min(11, { message: 'O telefone deve conter 11 dígitos.' }),
@@ -100,16 +101,15 @@ const alunoSchema = z.object({
   ]),
 })
 
-// Esquema para FormValuesStudent, ajustado para a estrutura completa
+// Esquema para FormValuesStudent (apenas aluno e turmaSelecionada)
 export const formValuesStudentSchema = z.object({
   aluno: alunoSchema,
-  modalidade: z.string(),
   turmaSelecionada: z.string(),
-  // nucleoSelecionado: z.string()
 })
 
 // Definindo interfaces para os tipos de dados
-interface Endereco {
+
+export interface Endereco {
   ruaAvenida: string
   numeroResidencia: number | string
   bairro: string
@@ -117,7 +117,7 @@ interface Endereco {
   complemento: string
 }
 
-interface PagadorMensalidades {
+export interface PagadorMensalidades {
   nomeCompleto: string
   cpf: number | string
   email: string
@@ -135,7 +135,7 @@ export interface InformacoesAdicionais {
   medicacao?: string
   tipomedicacao: string
   convenio: string
-  nucleoTreinamento: string
+  // Removido: nucleoTreinamento
   competicao: string
   comprometimentoMensalidade: string
   copiaDocumento: string
@@ -149,8 +149,8 @@ export interface InformacoesAdicionais {
   filhofuncionariomarcopolo: string
   nomefuncionariomarcopolo: string
   uniforme: string
-  hasUniforme?:boolean
-  IdentificadorUnico?:string
+  hasUniforme?: boolean
+  IdentificadorUnico?: string
 }
 
 export interface IIAvisos {
@@ -162,7 +162,6 @@ export interface IIAvisos {
   IsActive: boolean;
 }
 
-
 export interface Aluno {
   id: number
   informacoesAdicionais: InformacoesAdicionais
@@ -172,67 +171,67 @@ export interface Aluno {
   presencas: Record<string, Record<string, boolean>>
   foto?: string
   dataMatricula?: string
-  avisos?:IIAvisos
+  avisos?: IIAvisos
 }
 
 export interface Turma {
   nome_da_turma: string
-  modalidade: string
-  nucleo: string
+  // Removidos: modalidade e nucleo, pois a modalidade é única
   categoria: string
   capacidade_maxima_da_turma: number
   capacidade_atual_da_turma: number
   alunos: Aluno[]
-  uuidTurma?:string
-  diaDaSemana?:string
-  horario?:string
+  uuidTurma?: string
+  diaDaSemana?: string
+  horario?: string
 }
 
 export interface AlunoComTurma {
   aluno: Aluno; 
   nomeDaTurma: string;
   categoria: string;
-  modalidade: string;
+  // Removida a propriedade modalidade, pois é única
   uniforme: boolean;
 }
 
 export interface IUpdateUniformeApiData {
-  modalidade: string;
+  // Removida a propriedade modalidade, pois é única
   nomeDaTurma: string;
   alunoNome: string;
   hasUniforme: boolean;
 }
 
 export interface Modalidade {
-  nome: string // identificador da modalidade, como "futebol", "vôlei", etc.
+  nome: string // Identificador da modalidade, por exemplo "futebol", "vôlei", etc.
   turmas: Turma[]
 }
+
+// Na versão atual, a seleção de modalidade não é feita no formulário, portanto:
 export interface AlunoPresencaUpdate extends Aluno {
-  modalidade: string
-  nomeDaTurma: string
-  alunoId: string
+  // Removidas as propriedades modalidade e nomeDaTurma; elas serão definidas no envio
+  alunoId: string | number
 }
 
 export interface MoveStudentsPayload {
   alunosNomes: string[];
   alunosModalidadesOrigem: string[];
   alunosTurmasOrigem: string[];
-  modalidadeDestino: string;
+  // Removida a propriedade modalidadeDestino, pois é única
   nomeDaTurmaDestino: string;
 }
 
 export interface TemporaryMoveStudentsPayload {
   alunoNome: string;
-  modalidadeOrigem: string;
+  // Removida a propriedade modalidadeOrigem, pois é única
   nomeDaTurmaOrigem: string;
-  modalidadeDestino: string;
+  // Removida a propriedade modalidadeDestino, pois é única
   nomeDaTurmaDestino: string;
 }
 
 export interface StudentPresenceTableProps {
   alunosDaTurma: Aluno[]
   setAlunosDaTurma: React.Dispatch<React.SetStateAction<Aluno[]>>
-  modalidade: string
+  // Removida a propriedade modalidade, pois é única
   nomeDaTurma: string
   alunoId?: number
 }
@@ -248,11 +247,10 @@ export interface AdminPageProps {
   modalidades: Modalidade[]
 }
 
+// Atualizado para remover os campos de seleção de modalidade e núcleo
 export type FormValuesStudent = {
-  aluno: AlunoPresencaUpdate
-  modalidade: string // nome da modalidade selecionada
-  turmaSelecionada: string // nome da turma selecionada
-  nucleoSelecionado: string // nome do núcleo selecionado
+  aluno: Omit<AlunoPresencaUpdate, 'modalidade' | 'nomeDaTurma'>;
+  turmaSelecionada: string; // Nome da turma selecionada
 }
 
 export interface ModalidadesData {
@@ -267,34 +265,25 @@ export interface AttendanceModalContentProps {
 }
 
 export interface IIAlunoUpdate extends Omit<Aluno, 'id' | 'presencas'> {
-  modalidade: string // A modalidade do aluno
-  nomeDaTurma: string // O nome da turma do aluno
+  // Removidas as propriedades modalidade e nomeDaTurma; serão definidas automaticamente
   alunoId?: string | number // O ID do aluno
-  anoNascimento: string // A data de nascimento a serem atualizada
+  anoNascimento: string // A data de nascimento a ser atualizada
   telefoneComWhatsapp: string | number
   nome: string
   informacoesAdicionais: InformacoesAdicionais;
-  dataMatricula?:string
+  dataMatricula?: string
 }
 
 export interface ArchiveAluno extends Omit<Aluno, 'id' | 'presencas'> {
   IdentificadorUnico: string | undefined
   alunoId?: string | number
-  modalidade: string, 
+  // Removida a propriedade modalidade, pois é única
   nomeDaTurma: string
-  anoNascimento: string // A data de nascimento a serem atualizada
+  anoNascimento: string // A data de nascimento a ser atualizada
   telefoneComWhatsapp: string | number
   nome: string
   informacoesAdicionais: InformacoesAdicionais;
-  dataMatricula?:string;
-  
-}
-
-export interface SelecaoModalidadeTurma {
-  modalidade: string
-  nucleo: string
-  turma: string
-  turmasDisponiveis?: Turma[] // Adicionando a propriedade turmasDisponiveis como opcional
+  dataMatricula?: string;
 }
 
 export interface IIUpdateStudantModal {
@@ -319,23 +308,22 @@ export interface AlunoAutocompleteOption {
   [x: string]: Key | null | undefined
   id: string 
   nome: string;
-  modalidade: string;
+  // Removida a propriedade modalidade, pois é única
   turma: string;
-  nucleo: string;
+  // Removida a propriedade nucleo, pois não é mais utilizada
 }
 
-export interface DeleteStudants{
+export interface DeleteStudants {
   alunoId: string 
-  modalidade: string, 
+  // Removida a propriedade modalidade, pois é única
   nomeDaTurma: string
-  alunosNomes?:string
- }
-
+  alunosNomes?: string
+}
 
 export interface DeleteAlunoAutocompleteOption {
   [x: string]: Key | null | undefined
   alunoId: string 
-  alunosNomes?:string;
-  modalidade: string;
+  alunosNomes?: string;
+  // Removida a propriedade modalidade, pois é única
   nomeDaTurma: string;
 }

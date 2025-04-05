@@ -23,69 +23,37 @@ import TemporaryStudentRegistration from "@/components/TemporaryStudents/Student
 
 export default function StudentPresenceTable() {
   const { modalidades, fetchModalidades } = useData();
-  const { handleSubmit, watch, setValue } = useForm<FormValuesStudent>({
+  const { handleSubmit, setValue } = useForm<FormValuesStudent>({
     defaultValues: {
-      modalidade: "", // Iniciar com valor vazio para evitar estado não controlado
       turmaSelecionada: "",
     },
   });
-  const [selectedNucleo, setSelectedNucleo] = useState<string>("");
-  const [nucleosDisponiveis, setNucleosDisponiveis] = useState<string[]>([]);
   const [turmasDisponiveis, setTurmasDisponiveis] = useState<Turma[]>([]);
   const [selectedTurma, setSelectedTurma] = useState<string>("");
   const [alunosDaTurma, setAlunosDaTurma] = useState<Aluno[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-
-  const watchedModalidade = watch("modalidade");
-
-  // Carregar modalidades ao montar o componente
+  // Buscar modalidades ao montar o componente
   useEffect(() => {
     fetchModalidades().catch(console.error);
   }, [fetchModalidades]);
 
-  // Carregar núcleos disponíveis quando a modalidade é selecionada
+  // Como só existe uma modalidade, usamos a primeira para obter as turmas disponíveis
   useEffect(() => {
-    if (watchedModalidade) {
-      const turmas = modalidades.find((m) => m.nome === watchedModalidade)?.turmas;
-      if (turmas) {
-        const nucleos = new Set(turmas.map((turma) => turma.nucleo));
-        setNucleosDisponiveis(Array.from(nucleos));
-      } else {
-        setNucleosDisponiveis([]);
-      }
-      setTurmasDisponiveis([]);
-      setSelectedNucleo('');
-      setSelectedTurma('');
-      setAlunosDaTurma([]);
+    if (modalidades && modalidades.length > 0) {
+      const firstModalidade = modalidades[0];
+      setTurmasDisponiveis(firstModalidade.turmas);
     }
-  }, [watchedModalidade, modalidades]);
+  }, [modalidades]);
 
-  // Carregar turmas disponíveis quando o núcleo é selecionado
-  useEffect(() => {
-    if (selectedNucleo && watchedModalidade) {
-      const turmasFiltradas = modalidades
-        .find((m) => m.nome === watchedModalidade)
-        ?.turmas.filter((turma) => turma.nucleo === selectedNucleo);
-      setTurmasDisponiveis(turmasFiltradas || []);
-    }
-  }, [selectedNucleo, watchedModalidade, modalidades]);
-
-  const handleModalidadeChange = useCallback((event: React.ChangeEvent<{ value: unknown }>) => {
-    const value = event.target.value as string;
-    setValue("modalidade", value);
-  }, [setValue]);
-
-  const handleNucleoChange = useCallback((event: React.ChangeEvent<{ value: unknown }>) => {
-    const value = event.target.value as string;
-    setSelectedNucleo(value);
-  }, []);
-
-  const handleTurmaChange = useCallback((event: React.ChangeEvent<{ value: unknown }>) => {
-    const value = event.target.value as string;
-    setSelectedTurma(value);
-    setValue("turmaSelecionada", value);
-  }, [setValue]);
+  const handleTurmaChange = useCallback(
+    (event: React.ChangeEvent<{ value: unknown }>) => {
+      const value = event.target.value as string;
+      setSelectedTurma(value);
+      setValue("turmaSelecionada", value);
+    },
+    [setValue]
+  );
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
@@ -96,18 +64,25 @@ export default function StudentPresenceTable() {
   };
 
   const onSubmit: SubmitHandler<FormValuesStudent> = async (data) => {
-    const turmaEscolhida = modalidades
-      .find((m) => m.nome === data.modalidade)
-      ?.turmas.find((t) => t.nome_da_turma === data.turmaSelecionada);
+    const turmaEscolhida =
+      modalidades && modalidades[0]?.turmas.find(
+        (t) => t.nome_da_turma === data.turmaSelecionada
+      );
 
     if (turmaEscolhida && Array.isArray(turmaEscolhida.alunos)) {
       setAlunosDaTurma(turmaEscolhida.alunos);
     }
   };
+
   const refreshPage = () => {
     alert("Dados salvos com sucesso");
     window.location.reload();
   };
+
+  // Nome da modalidade única (se houver)
+  const singleModalidadeName =
+    modalidades && modalidades.length > 0 ? modalidades[0].nome : "";
+
   return (
     <Layout>
       <Container>
@@ -116,61 +91,15 @@ export default function StudentPresenceTable() {
             <HeaderForm titulo={"Lista de Chamada"} />
             <List sx={ListStyle}>
               <Grid container spacing={2}>
-                {/* Campo para selecionar a modalidade */}
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    select
-                    required
-                    label="Modalidade"
-                    value={watchedModalidade}
-                    onChange={handleModalidadeChange}
-                    fullWidth
-                    variant="outlined"
-                    sx={{ marginBottom: 2 }}
-                  >
-                    {modalidades
-                      .filter(
-                        (modalidade) =>
-                          modalidade.nome !== "arquivados" &&
-                          modalidade.nome !== "excluidos"
-                      )
-                      .map((modalidade) => (
-                        <MenuItem key={modalidade.nome} value={modalidade.nome}>
-                          {modalidade.nome}
-                        </MenuItem>
-                      ))}
-                  </TextField>
-                </Grid>
-
-                {/* Campo para selecionar o núcleo */}
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    select
-                    label="Local de treinamento"
-                    value={selectedNucleo}
-                    onChange={handleNucleoChange}
-                    fullWidth
-                    required
-                    variant="outlined"
-                    sx={{ marginBottom: 2 }}
-                  >
-                    {nucleosDisponiveis.map((nucleo) => (
-                      <MenuItem key={nucleo} value={nucleo}>
-                        {nucleo}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Grid>
-
                 {/* Campo para selecionar a turma */}
-                <Grid item xs={12} sm={4}>
+                <Grid item xs={12} sm={6}>
                   <TextField
                     select
+                    required
                     label="Turma"
                     value={selectedTurma}
                     onChange={handleTurmaChange}
                     fullWidth
-                    required
                     variant="outlined"
                     sx={{ marginBottom: 2 }}
                   >
@@ -190,7 +119,6 @@ export default function StudentPresenceTable() {
                 <ListaDeChamada
                   alunosDaTurma={alunosDaTurma}
                   setAlunosDaTurma={setAlunosDaTurma}
-                  modalidade={watchedModalidade}
                   nomeDaTurma={selectedTurma}
                 />
               )}
@@ -206,7 +134,7 @@ export default function StudentPresenceTable() {
               sx={{ fontSize: "12px" }}
               color="error"
               variant="contained"
-              onClick={() => handleOpenModal()}
+              onClick={handleOpenModal}
             >
               Adicionar aluno temporário
             </Button>
@@ -234,7 +162,11 @@ export default function StudentPresenceTable() {
 }
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
-  const session = await getServerSession(context.req, context.res, authOptions);
+  const session = await getServerSession(
+    context.req,
+    context.res,
+    authOptions
+  );
 
   // Permitir acesso se o usuário for admin ou professor
   if (
@@ -249,6 +181,5 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     };
   }
 
-  // Retornar props aqui se a permissão for válida
-  return { props: {} }; // Pode retornar props vazias ou adicionais conforme necessário
+  return { props: {} };
 };

@@ -18,13 +18,9 @@ import Pagination from "@mui/material/Pagination";
 import PaginationItem from "@mui/material/PaginationItem";
 import { useData } from "@/context/context";
 import { useEffect, useState, useCallback } from "react";
-import {
-  AlunoComTurma,
-  TemporaryMoveStudentsPayload,
-} from "@/interface/interfaces";
+import { AlunoComTurma, TemporaryMoveStudentsPayload } from "@/interface/interfaces";
 import { v4 as uuidv4 } from "uuid";
 import { Button, Container, Snackbar, Typography, CircularProgress } from "@mui/material";
-
 import Layout from "@/components/TopBarComponents/Layout";
 import DownloadingIcon from "@mui/icons-material/Downloading";
 import { StyledDataGrid } from "@/utils/Styles";
@@ -75,13 +71,14 @@ export default function MoveStudantsTurma() {
   const { fetchModalidades } = useData();
   const [alunosComTurma, setAlunosComTurma] = useState<AlunoComTurma[]>([]);
   const [modifiedRows, setModifiedRows] = useState<Record<GridRowId, AlunoComTurma>>({});
-  const [isProcessing, setIsProcessing] = useState(false); // State to track processing
-  const [successMessage, setSuccessMessage] = useState<string | null>(null); // State for success message
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const fetchAndSetModalidades = useCallback(async () => {
     const modalidadesFetched = await fetchModalidades();
     const modalidadesValidas = modalidadesFetched.filter(
-      (modalidade) => !["temporarios", "arquivados", "excluidos"].includes(modalidade.nome.toLowerCase())
+      (modalidade) =>
+        !["temporarios", "arquivados", "excluidos"].includes(modalidade.nome.toLowerCase())
     );
 
     const alunosComTurmaTemp: AlunoComTurma[] = modalidadesValidas.flatMap((modalidade) =>
@@ -92,12 +89,12 @@ export default function MoveStudantsTurma() {
             ...aluno,
             informacoesAdicionais: {
               ...aluno.informacoesAdicionais,
-              IdentificadorUnico: aluno.informacoesAdicionais?.IdentificadorUnico ?? uuidv4(),
+              IdentificadorUnico:
+                aluno.informacoesAdicionais?.IdentificadorUnico ?? uuidv4(),
             },
           },
           nomeDaTurma: turma.nome_da_turma,
           categoria: turma.categoria,
-          modalidade: turma.modalidade,
           uniforme: aluno.informacoesAdicionais?.hasUniforme ?? false,
         }));
       })
@@ -115,32 +112,28 @@ export default function MoveStudantsTurma() {
     page: 0,
   });
 
-  const rows: GridRowsProp = alunosComTurma.map(
-    ({ aluno, nomeDaTurma, categoria, modalidade }) => {
-      return {
-        id: aluno.informacoesAdicionais?.IdentificadorUnico ?? uuidv4(),
-        col1: aluno.nome,
-        col2: aluno.anoNascimento,
-        col3: nomeDaTurma,
-        col4: categoria,
-        col5: modalidade,
-        col6: aluno.informacoesAdicionais.escolaEstuda,
-      };
-    }
-  );
+  const rows: GridRowsProp = alunosComTurma.map(({ aluno, nomeDaTurma, categoria }) => {
+    return {
+      id: aluno.informacoesAdicionais?.IdentificadorUnico ?? uuidv4(),
+      col1: aluno.nome,
+      col2: aluno.anoNascimento,
+      col3: nomeDaTurma,
+      col4: categoria,
+      col5: aluno.informacoesAdicionais.escolaEstuda,
+    };
+  });
 
-  const mergedRows = rows.map(row => ({
+  const mergedRows = rows.map((row) => ({
     ...row,
-    ...(modifiedRows[row.id] ? { uniforme: modifiedRows[row.id].uniforme } : {})
+    ...(modifiedRows[row.id] ? { uniforme: modifiedRows[row.id].uniforme } : {}),
   }));
 
   const columns: GridColDef[] = [
     { field: "col1", headerName: "Nome", width: 250 },
     { field: "col2", headerName: "Nascimento", width: 100 },
     { field: "col3", headerName: "Turma", width: 250 },
-    { field: "col4", headerName: "Núcleo", width: 100 },
-    { field: "col5", headerName: "Modalidade", width: 100 },
-    { field: "col6", headerName: "Escola que estuda", width: 150 },
+    { field: "col4", headerName: "Categoria", width: 100 },
+    { field: "col5", headerName: "Escola que estuda", width: 150 },
     {
       field: "MudarTurma",
       headerName: "Mudar Turma",
@@ -148,13 +141,14 @@ export default function MoveStudantsTurma() {
       renderCell: (params) => {
         const data: TemporaryMoveStudentsPayload = {
           alunoNome: params.row.col1,
-          modalidadeOrigem: params.row.col5,
           nomeDaTurmaOrigem: params.row.col3,
-          modalidadeDestino: "",
-          nomeDaTurmaDestino: ""
+          nomeDaTurmaDestino: "",
         };
         return (
-          <MoveAllStudentsMemo alunoNome={data.alunoNome} nomeDaTurmaOrigem={data.nomeDaTurmaOrigem} modalidadeOrigem={data.modalidadeOrigem} />
+          <MoveAllStudentsMemo
+            alunoNome={data.alunoNome}
+            nomeDaTurmaOrigem={data.nomeDaTurmaOrigem}
+          />
         );
       },
     },
@@ -165,16 +159,17 @@ export default function MoveStudantsTurma() {
       renderCell: (params) => {
         const data: TemporaryMoveStudentsPayload = {
           alunoNome: params.row.col1,
-          modalidadeOrigem: params.row.col5,
           nomeDaTurmaOrigem: params.row.col3,
-          modalidadeDestino: "",
-          nomeDaTurmaDestino: ""
+          nomeDaTurmaDestino: "",
         };
         return (
-          <CopyStudentMemo alunoNome={data.alunoNome} nomeDaTurmaOrigem={data.nomeDaTurmaOrigem} modalidadeOrigem={data.modalidadeOrigem} />
+          <CopyStudentMemo
+            alunoNome={data.alunoNome}
+            nomeDaTurmaOrigem={data.nomeDaTurmaOrigem}
+          />
         );
       },
-    }
+    },
   ];
 
   return (
@@ -191,7 +186,7 @@ export default function MoveStudantsTurma() {
               borderRadius: "5px",
               display: "flex",
               justifyContent: "center",
-              alignItems: "center"
+              alignItems: "center",
             }}
           >
             Ajustando dados da turma, por favor aguarde...
