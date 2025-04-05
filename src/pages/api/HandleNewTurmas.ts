@@ -41,7 +41,7 @@ async function handlePost(request: NextApiRequest, response: NextApiResponse) {
     const uuidDaTurma = uuidv4();
     
     // Obtém a referência para as turmas da modalidade padrão
-    const modalidadeReference = database.ref(`modalidades/${modalidadeDefault}/turmas`);
+    const modalidadeReference = database.ref(`modalidades/volei/turmas`);
     const modalidadeSnapshot = await modalidadeReference.once('value');
     
     // Determina o novo índice da turma com base na quantidade de turmas existentes
@@ -88,7 +88,7 @@ async function handlePut(request: NextApiRequest, response: NextApiResponse) {
     const { uuidTurma, nome_da_turma, capacidade_maxima_da_turma, categoria } = updateClassData;
     
     // Busca a turma a ser atualizada usando o uuidTurma na modalidade padrão
-    const classReference = database.ref(`modalidades/${modalidadeDefault}/turmas`)
+    const classReference = database.ref(`modalidades/volei/turmas`)
       .orderByChild('uuidTurma')
       .equalTo(uuidTurma);
     const snapshot = await classReference.once('value');
@@ -101,7 +101,7 @@ async function handlePut(request: NextApiRequest, response: NextApiResponse) {
     const classKey = Object.keys(snapshot.val())[0];
     
     // Atualiza os campos desejados da turma
-    await database.ref(`modalidades/${modalidadeDefault}/turmas/${classKey}`).update({
+    await database.ref(`modalidades/volei/turmas/${classKey}`).update({
       nome_da_turma: nome_da_turma,
       capacidade_maxima_da_turma: capacidade_maxima_da_turma,
       categoria: categoria
@@ -124,7 +124,7 @@ async function handleDelete(request: NextApiRequest, response: NextApiResponse) 
     const { uuidTurma } = deleteTurmaSchema.parse(request.body);
     
     // Obtém a referência para todas as turmas da modalidade padrão
-    const turmasReference = database.ref(`modalidades/${modalidadeDefault}/turmas`);
+    const turmasReference = database.ref(`modalidades/volei/turmas`);
     const snapshot = await turmasReference.once('value');
     
     if (!snapshot.exists()) {

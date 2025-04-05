@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 const db = admin.database();
 // Definindo a modalidade fixa (ajuste conforme necessário)
-const modalidadeDefault = "default";
+const modalidadeDefault = "volei";
 
 async function atualizarTurma(
   nomeTurma: string,

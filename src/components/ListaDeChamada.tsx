@@ -115,6 +115,7 @@ export const ListaDeChamada: React.FC<Omit<StudentPresenceTableProps, "modalidad
             ...student,
             alunoId: alunoId.toString(),
             presencas: updatedAttendance,
+            nomeDaTurma: nomeDaTurma, // Adicionado
           };
 
           updateAttendanceInApi(alunoUpdateData);

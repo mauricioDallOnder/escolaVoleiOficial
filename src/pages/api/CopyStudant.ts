@@ -8,7 +8,7 @@ const db = admin.database();
 const modalidadeDefault = "default"; // Ajuste esse valor conforme sua estrutura
 
 async function atualizarTurma(modalidade: string, nomeTurma: string, aluno: Aluno | null, incremento: number) {
-  const turmaRef = db.ref(`modalidades/${modalidade}/turmas`)
+  const turmaRef = db.ref(`modalidades/volei/turmas`)
     .orderByChild('nome_da_turma')
     .equalTo(nomeTurma);
   const snapshot = await turmaRef.once('value');

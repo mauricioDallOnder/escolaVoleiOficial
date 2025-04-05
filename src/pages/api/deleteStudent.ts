@@ -42,12 +42,12 @@ async function removerAluno(nomeDaTurma: string, identificadorUnico: string): Pr
 
       if (alunoKey) {
         // Remover o aluno
-        await db.ref(`modalidades/${modalidadeDefault}/turmas/${turmaKey}/alunos/${alunoKey}`).remove();
+        await db.ref(`modalidades/volei/turmas/${turmaKey}/alunos/${alunoKey}`).remove();
 
         // Atualizar o contador de alunos, se aplicável
         if (turma.capacidade_atual_da_turma && turma.capacidade_atual_da_turma > 0) {
           const novoContadorAlunos = turma.capacidade_atual_da_turma - 1;
-          await db.ref(`modalidades/${modalidadeDefault}/turmas/${turmaKey}`).update({ 
+          await db.ref(`modalidades/volei/turmas/${turmaKey}`).update({ 
             capacidade_atual_da_turma: novoContadorAlunos 
           });
         }
