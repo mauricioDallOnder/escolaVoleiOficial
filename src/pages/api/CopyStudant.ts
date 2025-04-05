@@ -2,10 +2,15 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import admin from '../../config/firebaseAdmin';
 import { Aluno } from '@/interface/interfaces';
 import { v4 as uuidv4 } from 'uuid';
+
 const db = admin.database();
+// Como existe apenas uma modalidade, definimos uma constante para ela
+const modalidadeDefault = "default"; // Ajuste esse valor conforme sua estrutura
 
 async function atualizarTurma(modalidade: string, nomeTurma: string, aluno: Aluno | null, incremento: number) {
-  const turmaRef = db.ref(`modalidades/${modalidade}/turmas`).orderByChild('nome_da_turma').equalTo(nomeTurma);
+  const turmaRef = db.ref(`modalidades/${modalidade}/turmas`)
+    .orderByChild('nome_da_turma')
+    .equalTo(nomeTurma);
   const snapshot = await turmaRef.once('value');
   if (snapshot.exists()) {
     const turmaData = snapshot.val();
@@ -17,8 +22,8 @@ async function atualizarTurma(modalidade: string, nomeTurma: string, aluno: Alun
       aluno.id = novoIdAluno;
       turma.alunos = turma.alunos || {};
       turma.alunos[novoIdAluno] = aluno;
-      aluno.informacoesAdicionais.IdentificadorUnico=uuidv4();
-    } // Não precisa de um else aqui, pois não estamos tratando remoção nesta parte
+      aluno.informacoesAdicionais.IdentificadorUnico = uuidv4();
+    }
 
     await db.ref(`modalidades/${modalidade}/turmas/${turmaKey}`).update({
       alunos: turma.alunos,
@@ -28,22 +33,25 @@ async function atualizarTurma(modalidade: string, nomeTurma: string, aluno: Alun
   }
 }
 
-export default async function moveStudent(req: NextApiRequest, res: NextApiResponse) {
+export default async function copyStudent(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).end('Method Not Allowed');
   }
 
-  const { alunoNome, modalidadeOrigem, nomeDaTurmaOrigem, modalidadeDestino, nomeDaTurmaDestino } = req.body;
-  if (!alunoNome || !modalidadeOrigem || !nomeDaTurmaOrigem || !modalidadeDestino || !nomeDaTurmaDestino) {
-    return res.status(400).json({ error: `Campos invalidos: ${alunoNome},${modalidadeOrigem},${nomeDaTurmaOrigem},${modalidadeDestino},${nomeDaTurmaDestino}` });
+  // Novo payload: somente alunoNome, nomeDaTurmaOrigem e nomeDaTurmaDestino
+  const { alunoNome, nomeDaTurmaOrigem, nomeDaTurmaDestino } = req.body;
+  if (!alunoNome || !nomeDaTurmaOrigem || !nomeDaTurmaDestino) {
+    return res.status(400).json({ error: `Campos inválidos: ${alunoNome}, ${nomeDaTurmaOrigem}, ${nomeDaTurmaDestino}` });
   }
 
   try {
-    console.log(req.body);  // Isso deve mostrar os valores corretos agora, se ainda houver problema, o erro está na origem dos dados.
+    console.log(req.body);
 
-    // Buscando o aluno na turma de origem
-    const turmaRefOrigem = db.ref(`modalidades/${modalidadeOrigem}/turmas`).orderByChild('nome_da_turma').equalTo(nomeDaTurmaOrigem);
+    // Buscando o aluno na turma de origem usando a modalidade padrão
+    const turmaRefOrigem = db.ref(`modalidades/${modalidadeDefault}/turmas`)
+      .orderByChild('nome_da_turma')
+      .equalTo(nomeDaTurmaOrigem);
     const snapshotOrigem = await turmaRefOrigem.once('value');
     let alunoDados: Aluno | null = null;
 
@@ -62,8 +70,8 @@ export default async function moveStudent(req: NextApiRequest, res: NextApiRespo
     }
 
     if (alunoDados) {
-      // Copiando o aluno para a nova turma
-      await atualizarTurma(modalidadeDestino, nomeDaTurmaDestino, alunoDados, 1);
+      // Copiando o aluno para a nova turma usando a modalidade padrão
+      await atualizarTurma(modalidadeDefault, nomeDaTurmaDestino, alunoDados, 1);
       return res.status(200).json({ message: 'Aluno copiado com sucesso!' });
     } else {
       return res.status(404).json({ error: 'Aluno não encontrado na turma de origem' });

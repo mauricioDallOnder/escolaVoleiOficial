@@ -208,9 +208,10 @@ export interface Modalidade {
 
 // Na versão atual, a seleção de modalidade não é feita no formulário, portanto:
 export interface AlunoPresencaUpdate extends Aluno {
-  // Removidas as propriedades modalidade e nomeDaTurma; elas serão definidas no envio
-  alunoId: string | number
+  alunoId: string | number;
+  nomeDaTurma: string; // Adicione esta propriedade
 }
+
 
 export interface MoveStudentsPayload {
   alunosNomes: string[];

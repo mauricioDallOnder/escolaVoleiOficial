@@ -1,32 +1,40 @@
-// pages/api/updateAttendance.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import admin from '../../config/firebaseAdmin';
 import { Turma } from '@/interface/interfaces';
 
+const db = admin.database();
+// Modalidade fixa definida para a nova estrutura
+const modalidadeDefault = "default";
+
 export default async function updateAttendance(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'PUT') {
     try {
-      const { modalidade, nomeDaTurma, alunoNome, presencas } = req.body;
+      // Agora o payload deve conter apenas nomeDaTurma, alunoNome e presencas
+      const { nomeDaTurma, alunoNome, presencas } = req.body;
 
-      // Caminho para as turmas da modalidade
-      const turmasRef = admin.database().ref(`modalidades/${modalidade}/turmas`);
+      // Caminho para as turmas na modalidade fixa
+      const turmasRef = admin.database().ref(`modalidades/${modalidadeDefault}/turmas`);
       const snapshot = await turmasRef.once('value');
-      const turmas: Turma[] = snapshot.val(); 
+      const turmas = snapshot.val();
+
       // Encontrar a turma e o aluno pelo nome
       let turmaIndex = -1;
       let alunoIndex = -1;
-      turmas.forEach((turma, idx) => {
+
+      // Supondo que as turmas estejam armazenadas como um array
+      turmas.forEach((turma: Turma, idx: number) => {
         if (turma.nome_da_turma === nomeDaTurma) {
           turmaIndex = idx;
-          turma!.alunos!.forEach((aluno, index) => {
-            if (aluno.nome === alunoNome) {
-              alunoIndex = index;
-            }
-          });
+          if (turma.alunos) {
+            turma.alunos.forEach((aluno: any, index: number) => {
+              if (aluno.nome === alunoNome) {
+                alunoIndex = index;
+              }
+            });
+          }
         }
       });
 
-      // Se não encontrar a turma ou o aluno, retorna erro
       if (turmaIndex === -1 || alunoIndex === -1) {
         return res.status(404).json({ error: 'Turma ou aluno não encontrado' });
       }
@@ -34,7 +42,7 @@ export default async function updateAttendance(req: NextApiRequest, res: NextApi
       // Referência para as presenças do aluno
       const presencasRef = turmasRef.child(`${turmaIndex}/alunos/${alunoIndex}/presencas`);
 
-      // Atualizar as presenças do aluno
+      // Atualiza as presenças conforme os dados recebidos
       await presencasRef.update(presencas);
 
       return res.status(200).json({ message: 'Presença atualizada com sucesso' });
