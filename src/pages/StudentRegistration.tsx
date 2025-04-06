@@ -235,6 +235,7 @@ export default function CadastrarAlunoPage() {
         const primeiroResultado = conteudo.resultados[0];
         if (primeiroResultado.sucesso) {
           setMensagem("Aluno cadastrado com sucesso!");
+          alert("Aluno cadastrado com sucesso!");
           CorrigirDadosDefinitivos();
         } else {
           const erroEncontrado = primeiroResultado.erro || "Erro desconhecido.";
