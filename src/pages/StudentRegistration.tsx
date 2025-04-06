@@ -32,6 +32,7 @@ import Layout from "@/components/TopBarComponents/Layout";
 import { useData } from "@/context/context";
 import { Turma } from "@/interface/interfaces";
 import { HeaderForm } from "@/components/HeaderDefaultForm";
+import { CorrigirDadosDefinitivos } from "@/utils/CorrigirDadosTurmasEmComponetes";
 
 
 // --------------------------------------------------------------
@@ -234,6 +235,7 @@ export default function CadastrarAlunoPage() {
         const primeiroResultado = conteudo.resultados[0];
         if (primeiroResultado.sucesso) {
           setMensagem("Aluno cadastrado com sucesso!");
+          CorrigirDadosDefinitivos();
         } else {
           const erroEncontrado = primeiroResultado.erro || "Erro desconhecido.";
           setMensagem("Falha ao cadastrar o aluno: " + erroEncontrado);
