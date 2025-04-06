@@ -28,7 +28,7 @@ const updateTurmaSchema = z.object({
   categoria: z.string().min(1, { message: "A categoria é obrigatória." }),
 
   // Se quiser atualizar também os dias da semana e horário, inclua aqui
-  diasDaSemana: z.array(z.string()).optional(),
+  diaDaSemana: z.array(z.string()).optional(),
   horario: z.string().optional(),
 
   // Neste exemplo, vou supor que a modalidade é sempre "volei" ou "default"
@@ -68,7 +68,7 @@ export default async function handleTurmasApi(
 
 /**
  * Cria uma nova turma (POST)
- * Agora aceita vários dias da semana em 'diasDaSemana: string[]'.
+ * Agora aceita vários dias da semana em 'diaDaSemana: string[]'.
  */
 async function handlePost(request: NextApiRequest, response: NextApiResponse) {
   try {
@@ -166,7 +166,7 @@ async function handlePost(request: NextApiRequest, response: NextApiResponse) {
  *   nome_da_turma: "Infanto Imigrante_SEGUNDA_SEXTA_18h",
  *   capacidade_maxima_da_turma: 50,
  *   categoria: "Infanto Imigrante",
- *   diasDaSemana: ["SEGUNDA","SEXTA"], // se quiser atualizar
+ *   diaDaSemana: ["SEGUNDA","SEXTA"], // se quiser atualizar
  *   horario: "18h", // se quiser atualizar
  *   modalidade: "volei"
  * }
@@ -178,7 +178,7 @@ async function handlePut(request: NextApiRequest, response: NextApiResponse) {
       nome_da_turma,
       capacidade_maxima_da_turma,
       categoria,
-      diasDaSemana,
+      diaDaSemana,
       horario,
       modalidade,
     } = updateTurmaSchema.parse(request.body);
@@ -207,9 +207,9 @@ async function handlePut(request: NextApiRequest, response: NextApiResponse) {
       categoria,
     };
 
-    // Se "diasDaSemana" foi informado, atualizamos
-    if (diasDaSemana && Array.isArray(diasDaSemana)) {
-      atualizacoes.diasDaSemana = diasDaSemana;
+    // Se "diaDaSemana" foi informado, atualizamos
+    if (diaDaSemana && Array.isArray(diaDaSemana)) {
+      atualizacoes.diaDaSemana = diaDaSemana;
     }
 
     // Se "horario" foi informado, atualizamos
@@ -224,7 +224,7 @@ async function handlePut(request: NextApiRequest, response: NextApiResponse) {
 
     // Se você quiser regenerar as presenças dos alunos, precisaria de lógica adicional aqui:
     // - Buscar cada aluno
-    // - Regenerar presencas com gerarPresencasParaVariosDias(diasDaSemana)
+    // - Regenerar presencas com gerarPresencasParaVariosDias(diaDaSemana)
     // - Atualizar DB. (Opcional, depende da sua regra de negócio)
 
     return response.status(200).json({

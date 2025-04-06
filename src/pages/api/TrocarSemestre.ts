@@ -42,7 +42,7 @@ function mesclarPresencas(
  * }
  *
  * E para cada turma:
- * 1) Obtem a array `diasDaSemana` (ou fallback se for uma string).
+ * 1) Obtem a array `diaDaSemana` (ou fallback se for uma string).
  * 2) Gera as presenças do semestre para cada dia, mesclando.
  * 3) Atualiza todos os alunos dessa turma no Realtime Database,
  *    substituindo "presencas" anteriores.
@@ -69,11 +69,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     for (const turma of modalidade.turmas) {
       console.log("Processando turma:", turma.nome_da_turma);
 
-      // Se a turma tiver array "diasDaSemana", usamos ela;
+      // Se a turma tiver array "diaDaSemana", usamos ela;
       // se for apenas uma string "diaDaSemana", podemos fallback:
       let arrayDeDias: string[];
-      if (Array.isArray(turma.diasDaSemana)) {
-        arrayDeDias = turma.diasDaSemana;
+      if (Array.isArray(turma.diaDaSemana)) {
+        arrayDeDias = turma.diaDaSemana;
       } else if (turma.diaDaSemana) {
         // Se mantiver a lógica antiga de extrair do nome, use extrairDiaDaSemana:
         // const diaExtraido = extrairDiaDaSemana(turma.nome_da_turma);

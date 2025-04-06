@@ -112,14 +112,14 @@ export default async function submitForm(req: NextApiRequest, res: NextApiRespon
       }
 
       // 4) Gera presenças para cada dia da semana
-      const diasDaTurma = Array.isArray(turmaEncontrada.diasDaSemana)
-        ? turmaEncontrada.diasDaSemana
+      const diasDaTurma = Array.isArray(turmaEncontrada.diaDaSemana)
+        ? turmaEncontrada.diaDaSemana
         : [turmaEncontrada.diaDaSemana]; // fallback
 
       // Checa se "diasDaTurma" é pelo menos um array com strings válidas
       if (!diasDaTurma || diasDaTurma.length === 0) {
         throw new Error(
-          `A turma ${turmaEncontrada.nome_da_turma} não possui diasDaSemana válidos.`
+          `A turma ${turmaEncontrada.nome_da_turma} não possui diaDaSemana válidos.`
         );
       }
 

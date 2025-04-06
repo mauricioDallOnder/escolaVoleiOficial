@@ -116,7 +116,7 @@ export interface Presencas {
   };
 }
 
-interface DiasDaSemanaMap {
+interface diaDaSemanaMap {
   [dia: string]: number;
 }
 
@@ -174,9 +174,9 @@ export function extrairDiaDaSemana(nomeDaTurma: string): string {
  *  - Caso contrário => gera de julho a dezembro.
  */
 // ---------- NOVA FUNÇÃO para lidar com vários dias ----------
-export function gerarPresencasParaVariosDias(diasDaSemana: string[]): Presencas {
+export function gerarPresencasParaVariosDias(diaDaSemana: string[]): Presencas {
   // Mapeia string => número do JavaScript
-  const diasDaSemanaMap: DiasDaSemanaMap = {
+  const diaDaSemanaMap: diaDaSemanaMap = {
     SEGUNDA: 1,
     TERÇA: 2,
     QUARTA: 3,
@@ -205,8 +205,8 @@ export function gerarPresencasParaVariosDias(diasDaSemana: string[]): Presencas 
     presencas[nomeMes] = presencas[nomeMes] || {};
 
     // Para cada dia da semana escolhido, gera as datas e adiciona no objeto
-    diasDaSemana.forEach((diaSemanaString) => {
-      const diaJs = diasDaSemanaMap[diaSemanaString.toUpperCase()];
+    diaDaSemana.forEach((diaSemanaString) => {
+      const diaJs = diaDaSemanaMap[diaSemanaString.toUpperCase()];
       if (diaJs === undefined) return; // ignora se não for válido
 
       const datasDoMes = gerarDiasDoMes(anoCorrente, mes, diaJs);
@@ -229,7 +229,7 @@ export function gerarPresencasParaAlunoSemestre(
   semestre: "primeiro" | "segundo",
   ano: number
 ): Presencas {
-  const diasDaSemana: DiasDaSemanaMap = {
+  const diaDaSemana: diaDaSemanaMap = {
     SEGUNDA: 1,
     TERÇA: 2,
     QUARTA: 3,
@@ -270,7 +270,7 @@ export function gerarPresencasParaAlunoSemestre(
     const dias = gerarDiasDoMesSemestre(
       ano,
       mesIndex,
-      diasDaSemana[diaDaSemana.toUpperCase()]
+      diaDaSemana[diaDaSemana.toUpperCase()]
     );
     dias.forEach((data) => {
       presencasSemestre[nomeMes][data] = true;

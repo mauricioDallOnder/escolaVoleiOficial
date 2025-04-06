@@ -923,7 +923,7 @@ function gerarDiasDoMes(ano, mes, diaDaSemana) {
 }
 
 function adicionarPresencas(turmas) {
-    const diasDaSemana = {
+    const diaDaSemana = {
         "SEGUNDA": 1,
         "TERCA": 2,
         "QUARTA": 3,
@@ -934,13 +934,13 @@ function adicionarPresencas(turmas) {
     };
 
     turmas.forEach(turma => {
-        Object.keys(diasDaSemana).forEach(dia => {
+        Object.keys(diaDaSemana).forEach(dia => {
             if (turma.nome_da_turma.includes(dia.toUpperCase())) {
                 let presencas = {};
                 for (let mes = 0; mes < 12; mes++) {
                     let nomeMes = new Date(2024, mes, 1).toLocaleString('pt-BR', { month: 'long' });
                     presencas[nomeMes] = {};
-                    let dias = gerarDiasDoMes(2024, mes, diasDaSemana[dia]);
+                    let dias = gerarDiasDoMes(2024, mes, diaDaSemana[dia]);
                     dias.forEach(data => {
                         presencas[nomeMes][data] = false;
                     });

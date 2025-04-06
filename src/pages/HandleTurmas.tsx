@@ -85,14 +85,14 @@ export default function ManageTurmas() {
     "Infanto Imigrante",
     "Mirim Imigrante",
     "Mini",
-    "Kvôlei Infantil",
-    "Kvôlei Mirim",
-    "Kvôlei Infanto",
-    "Kvôlei Masculino Infanto",
-    "Kvôlei Mirim Masculino",
-    "Kvôlei juvenil Masculino",
-    "Kvôlei Adulto Feminino",
-    "Kvôlei Adulto Masculino",
+    "Kvôlei_Infantil",
+    "Kvôlei_Mirim",
+    "Kvôlei_Infanto",
+    "Kvôlei_Masculino_Infanto",
+    "Kvôlei_Mirim_Masculino",
+    "Kvôlei_juvenil_Masculino",
+    "Kvôlei_Adulto_Feminino",
+    "Kvôlei_Adulto_Masculino",
   ];
 
   // Dias da semana possíveis
