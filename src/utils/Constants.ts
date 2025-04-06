@@ -211,7 +211,7 @@ export function gerarPresencasParaVariosDias(diasDaSemana: string[]): Presencas 
 
       const datasDoMes = gerarDiasDoMes(anoCorrente, mes, diaJs);
       datasDoMes.forEach((dataStr) => {
-        presencas[nomeMes][dataStr] = false;
+        presencas[nomeMes][dataStr] = true;
       });
     });
   }
@@ -273,7 +273,7 @@ export function gerarPresencasParaAlunoSemestre(
       diasDaSemana[diaDaSemana.toUpperCase()]
     );
     dias.forEach((data) => {
-      presencasSemestre[nomeMes][data] = false;
+      presencasSemestre[nomeMes][data] = true;
     });
   });
 

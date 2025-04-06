@@ -109,6 +109,7 @@ export interface Aluno {
 }
 
 export interface Turma {
+  modalidade: string | undefined;
   nome_da_turma: string;
   categoria: string;
   capacidade_maxima_da_turma: number;
@@ -124,12 +125,14 @@ export interface AlunoComTurma {
   nomeDaTurma: string;
   categoria: string;
   uniforme: boolean;
+  modalidade?:string
 }
 
 export interface IUpdateUniformeApiData {
   nomeDaTurma: string;
   alunoNome: string;
   hasUniforme: boolean;
+  modalidade:string
 }
 
 export interface Modalidade {

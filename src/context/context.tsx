@@ -35,7 +35,7 @@ interface DataContextType {
   updateAttendanceInApi: (data: AlunoPresencaUpdate) => Promise<void>
   moveStudentTemp: (payload: TemporaryMoveStudentsPayload) => Promise<void>
   copyStudentTemp: (payload: TemporaryMoveStudentsPayload) => Promise<void>
-  updateUniformeInApi: (data: { nomeDaTurma: string; alunoNome: string; hasUniforme: boolean }) => Promise<void>;
+  updateUniformeInApi: (data: { nomeDaTurma: string; alunoNome: string; hasUniforme: boolean,modalidade:string }) => Promise<void>;
   deleteStudentFromApi: (payload: { alunoId: string; nomeDaTurma: string; }) => Promise<void>
   avisoStudent: (payload: IIAvisos, method: 'POST' | 'PUT' | 'DELETE') => Promise<void>;
 }
@@ -298,29 +298,38 @@ const DataProvider: React.FC<ChildrenProps> = ({ children }) => {
     return response.json();
   }
 
-  // Atualizado: remoção da propriedade "modalidade" do payload
-  const updateUniformeInApi = async (data: { nomeDaTurma: string; alunoNome: string; hasUniforme: boolean }) => {
+  const updateUniformeInApi = async (data: {
+    modalidade: string;               // <-- Adicione
+    nomeDaTurma: string;
+    alunoNome: string;
+    hasUniforme: boolean;
+  }) => {
     try {
       const payload = {
+        modalidade: data.modalidade,   // <-- Envie
         nomeDaTurma: data.nomeDaTurma,
         alunoNome: data.alunoNome,
         hasUniforme: data.hasUniforme,
       };
-      const response = await fetch('/api/updateUniforme', {
-        method: 'PUT',
+  
+      const response = await fetch("/api/updateUniforme", {
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
       });
+  
       if (!response.ok) {
         const errorData = await response.json();
-        console.log(response)
-        throw new Error(errorData.error || 'Falha ao atualizar o status do uniforme');
+        console.log(response);
+        throw new Error(
+          errorData.error || "Falha ao atualizar o status do uniforme"
+        );
       }
-      console.log('Status do uniforme atualizado com sucesso');
+      console.log("Status do uniforme atualizado com sucesso");
     } catch (error) {
-      console.error('Erro ao atualizar o status do uniforme:', error);
+      console.error("Erro ao atualizar o status do uniforme:", error);
     }
   };
 
