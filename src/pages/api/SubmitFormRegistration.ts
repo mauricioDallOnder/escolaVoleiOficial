@@ -1,16 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import admin from "../../config/firebaseAdmin";
 
-// Importe as funções que você tem em "constants" (ajuste o caminho se necessário).
-// Aqui precisamos:
-//  - gerarPresencasParaAlunoSemestre(diaDaSemana, semestre, ano)
-//  - um tipo "Presencas" e se quiser "DiasDaSemanaMap"
-//  - se tiver "normalizeName" ou outras, adapte.
+// Importe a função que gera presenças de acordo com o semestre
 import { gerarPresencasParaAlunoSemestre } from "@/utils/Constants";
-
 import { v4 as uuidv4 } from "uuid";
 
-// Inicializa o database do Firebase Admin
 const db = admin.database();
 
 /**
@@ -23,12 +17,9 @@ function mesclarPresencas(
 ): Record<string, Record<string, boolean>> {
   for (const nomeMes of Object.keys(other)) {
     if (!base[nomeMes]) {
-      // Se "nomeMes" não existe em "base", cria
       base[nomeMes] = {};
     }
-    // Percorre cada data (ex.: "1-7-2025") em "other[nomeMes]"
     for (const dataStr of Object.keys(other[nomeMes])) {
-      // Atribui no base
       base[nomeMes][dataStr] = other[nomeMes][dataStr];
     }
   }
@@ -36,33 +27,27 @@ function mesclarPresencas(
 }
 
 /**
- * Endpoint que cadastra um aluno em uma turma:
- *  1) Localiza a turma pelo "nome_da_turma".
- *  2) Verifica vagas e duplicidade.
- *  3) Gera presenças para o SEMESTRE ATUAL (com base no mês do sistema).
- *  4) Mescla as presenças de cada dia da semana (caso haja vários).
- *  5) Salva aluno no DB e atualiza contador.
+ * Rota de cadastro de aluno em uma turma:
+ *  1. Busca a turma pelo nome_da_turma.
+ *  2. Verifica se há vagas e se o aluno já existe.
+ *  3. Gera presenças para o SEMESTRE ATUAL (com base no mês do sistema) para TODOS os dias da semana da turma.
+ *  4. Mescla presenças de cada dia em um objeto final (se a turma tiver vários dias).
+ *  5. Salva o aluno no DB e atualiza a capacidade da turma.
  */
-export default async function submitForm(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
+export default async function submitForm(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).end("Method Not Allowed");
   }
 
-  // Pode chegar um array ou um único objeto no "req.body"
+  // Pode chegar 1 objeto ou um array de objetos
   const itensRecebidos = Array.isArray(req.body) ? req.body : [req.body];
   const resultados: any[] = [];
 
   for (const item of itensRecebidos) {
     const { turmaSelecionada, aluno } = item;
+    const modalidade = "volei"; // fixo ou conforme sua lógica
 
-    // Modalidade fixa, ex.: "volei"
-    const modalidade = "volei";
-
-    // Se não foi informada a turma, erro.
     if (!turmaSelecionada) {
       resultados.push({
         sucesso: false,
@@ -73,7 +58,7 @@ export default async function submitForm(
     }
 
     try {
-      // 1) Localiza a turma que tenha "nome_da_turma = turmaSelecionada"
+      // 1) Localiza a turma "nome_da_turma = turmaSelecionada"
       const turmaRef = db
         .ref(`modalidades/${modalidade}/turmas`)
         .orderByChild("nome_da_turma")
@@ -89,25 +74,24 @@ export default async function submitForm(
         continue;
       }
 
-      // Extrai a key e os dados da turma
       const turmaData = snapshot.val();
       const turmaKey = Object.keys(turmaData)[0];
       const turmaEncontrada = turmaData[turmaKey];
 
-      // 2) Verifica se a turma está cheia
+      // 2) Verifica capacidade
       if (
         turmaEncontrada.capacidade_atual_da_turma >=
         turmaEncontrada.capacidade_maxima_da_turma
       ) {
         resultados.push({
           sucesso: false,
-          erro: `Não há vagas na turma ${turmaEncontrada.nome_da_turma}.`,
+          erro: `Não há vagas disponíveis na turma ${turmaEncontrada.nome_da_turma}.`,
           aluno,
         });
         continue;
       }
 
-      // 3) Verifica se o aluno já está cadastrado (nome normalizado)
+      // 3) Verifica duplicidade de aluno (pelo nome normalizado)
       const alunosSnapshot = await db
         .ref(`modalidades/${modalidade}/turmas/${turmaKey}/alunos`)
         .once("value");
@@ -127,38 +111,66 @@ export default async function submitForm(
         continue;
       }
 
-      // 4) Gera presenças para cada dia da semana (array "turmaEncontrada.diasDaSemana").
-      //    Se for string, converte para array de 1 dia.
+      // 4) Gera presenças para cada dia da semana
       const diasDaTurma = Array.isArray(turmaEncontrada.diasDaSemana)
         ? turmaEncontrada.diasDaSemana
         : [turmaEncontrada.diaDaSemana]; // fallback
 
-      // Detecta o semestre com base no mês atual
+      // Checa se "diasDaTurma" é pelo menos um array com strings válidas
+      if (!diasDaTurma || diasDaTurma.length === 0) {
+        throw new Error(
+          `A turma ${turmaEncontrada.nome_da_turma} não possui diasDaSemana válidos.`
+        );
+      }
+
+      // Determina o semestre com base no mês atual
       const mesAtual = new Date().getMonth() + 1; // 1..12
-     const semestreDetectado = mesAtual < 7 ? "primeiro" : "segundo";
-    // const semestreDetectado = "segundo";
+      const semestreDetectado = mesAtual < 7 ? "primeiro" : "segundo";
       const anoAtual = new Date().getFullYear();
 
-      // Precisamos mesclar as presenças de cada dia. Iniciamos um objeto vazio.
+      // Objeto final de presenças
       let presencasFinais: Record<string, Record<string, boolean>> = {};
 
+      // Array de dias válidos para .toUpperCase():
+      const diasValidos = [
+        "SEGUNDA",
+        "TERÇA",
+        "QUARTA",
+        "QUINTA",
+        "SEXTA",
+        "SÁBADO",
+        "DOMINGO",
+      ];
+
       for (const diaSemana of diasDaTurma) {
-        // Gera presenças para esse dia, nesse semestre e ano
+        // Verifica se "diaSemana" é string
+        if (typeof diaSemana !== "string") {
+          throw new Error(
+            `diaSemana inválido na turma: ${JSON.stringify(diaSemana)}`
+          );
+        }
+        // Verifica se é um dos dias válidos
+        if (!diasValidos.includes(diaSemana.toUpperCase())) {
+          throw new Error(
+            `Dia da semana inválido: "${diaSemana}". Esperava algo como SEGUNDA, TERÇA, etc.`
+          );
+        }
+
+        // Gera presenças para esse dia
         const presencasUmDia = gerarPresencasParaAlunoSemestre(
-          diaSemana,          // ex.: "SEGUNDA"
-          semestreDetectado,  // "primeiro" ou "segundo"
+          diaSemana.toUpperCase(),
+          semestreDetectado,
           anoAtual
         );
 
-        // Mesclamos no objeto final
+        // Mesclamos
         presencasFinais = mesclarPresencas(presencasFinais, presencasUmDia);
       }
 
       // 5) Atribui no aluno
       aluno.presencas = presencasFinais;
-
-      // Define data de matrícula e UUID
       aluno.dataMatricula = new Date().toLocaleDateString("pt-BR");
+
       if (!aluno.informacoesAdicionais) {
         aluno.informacoesAdicionais = {};
       }
@@ -170,7 +182,9 @@ export default async function submitForm(
 
       // 7) Salva no DB
       await db
-        .ref(`modalidades/${modalidade}/turmas/${turmaKey}/alunos/${novoIdAluno}`)
+        .ref(
+          `modalidades/${modalidade}/turmas/${turmaKey}/alunos/${novoIdAluno}`
+        )
         .set(aluno);
 
       // 8) Atualiza contadores da turma
@@ -180,7 +194,7 @@ export default async function submitForm(
         contadorAlunos: novoIdAluno,
       });
 
-      // 9) Sucesso: empurra no array de resultados
+      // 9) Sucesso
       resultados.push({ sucesso: true, aluno });
     } catch (erro: any) {
       resultados.push({ sucesso: false, erro: erro.message, aluno });
