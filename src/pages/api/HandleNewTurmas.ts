@@ -14,11 +14,12 @@ const database = admin.database();
  * - Outro para deletar turma (DELETE)
  */
 const createTurmaSchema = z.object({
-  categoria: z.string().min(1, { message: "A categoria é obrigatória." }),
-  diasDaSemana: z.array(z.string()).nonempty({ message: "Pelo menos um dia deve ser informado." }),
-  horario: z.string().min(1, { message: "O horário é obrigatório." }),
-  capacidade_maxima_da_turma: z.number().min(1, { message: "A capacidade máxima deve ser pelo menos 1." }),
+  categoria: z.string().min(1),
+  diaDaSemana: z.array(z.string()).nonempty(),
+  horario: z.string().min(1),
+  capacidade_maxima_da_turma: z.number().min(1),
 });
+
 
 const updateTurmaSchema = z.object({
   uuidTurma: z.string().uuid({ message: "O uuidTurma deve ser um UUID válido." }),
@@ -72,15 +73,15 @@ export default async function handleTurmasApi(
 async function handlePost(request: NextApiRequest, response: NextApiResponse) {
   try {
     // Valida o corpo com Zod
-    const { categoria, diasDaSemana, horario, capacidade_maxima_da_turma } =
+    const { categoria, diaDaSemana, horario, capacidade_maxima_da_turma } =
       createTurmaSchema.parse(request.body);
 
     // Monte o nome da turma. Exemplo:
     // "Mirim Imigrante_SEGUNDA_QUARTA_SEXTA_18h"
-    const nomeDaTurma = `${categoria}_${diasDaSemana.join("_")}_${horario}`;
+    const nomeDaTurma = `${categoria}_${diaDaSemana.join("_")}_${horario}`;
 
     // Gere o objeto de presenças para esses múltiplos dias
-    const presencasGeradas = gerarPresencasParaVariosDias(diasDaSemana);
+    const presencasGeradas = gerarPresencasParaVariosDias(diaDaSemana);
 
     // Exemplo: podemos criar um "aluno de teste" só para demonstrar.
     // Se não quiser, remova.
@@ -131,7 +132,7 @@ async function handlePost(request: NextApiRequest, response: NextApiResponse) {
       nome_da_turma: nomeDaTurma,
       uuidTurma: uuidTurma,
       categoria: categoria,
-      diasDaSemana: diasDaSemana, // array
+      diaDaSemana: diaDaSemana, // array
       horario: horario,
       capacidade_maxima_da_turma: capacidade_maxima_da_turma,
       capacidade_atual_da_turma: 1, // começa com 1 se já tiver um aluno

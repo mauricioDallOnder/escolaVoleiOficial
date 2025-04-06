@@ -1,43 +1,85 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import admin from "../../config/firebaseAdmin";
-import axios from "axios";
-// Substitua "extrairDiaDaSemana" e "gerarPresencasParaAluno" pela nova função
-// import { extrairDiaDaSemana, gerarPresencasParaAluno, normalizeName } from "@/utils/Constants";
-import { normalizeName, gerarPresencasParaVariosDias } from "@/utils/Constants"; 
-// ^ Se "normalizeName" for outra função sua. Ajuste conforme necessário.
+
+// Importe as funções que você tem em "constants" (ajuste o caminho se necessário).
+// Aqui precisamos:
+//  - gerarPresencasParaAlunoSemestre(diaDaSemana, semestre, ano)
+//  - um tipo "Presencas" e se quiser "DiasDaSemanaMap"
+//  - se tiver "normalizeName" ou outras, adapte.
+import { gerarPresencasParaAlunoSemestre } from "@/utils/Constants";
 
 import { v4 as uuidv4 } from "uuid";
 
+// Inicializa o database do Firebase Admin
 const db = admin.database();
 
-export default async function submitForm(req: NextApiRequest, res: NextApiResponse) {
+/**
+ * Função para unir (merge) dois objetos de presenças em um só.
+ * Se um mês ou dia não existe em 'base', adicionamos de 'other'.
+ */
+function mesclarPresencas(
+  base: Record<string, Record<string, boolean>>,
+  other: Record<string, Record<string, boolean>>
+): Record<string, Record<string, boolean>> {
+  for (const nomeMes of Object.keys(other)) {
+    if (!base[nomeMes]) {
+      // Se "nomeMes" não existe em "base", cria
+      base[nomeMes] = {};
+    }
+    // Percorre cada data (ex.: "1-7-2025") em "other[nomeMes]"
+    for (const dataStr of Object.keys(other[nomeMes])) {
+      // Atribui no base
+      base[nomeMes][dataStr] = other[nomeMes][dataStr];
+    }
+  }
+  return base;
+}
+
+/**
+ * Endpoint que cadastra um aluno em uma turma:
+ *  1) Localiza a turma pelo "nome_da_turma".
+ *  2) Verifica vagas e duplicidade.
+ *  3) Gera presenças para o SEMESTRE ATUAL (com base no mês do sistema).
+ *  4) Mescla as presenças de cada dia da semana (caso haja vários).
+ *  5) Salva aluno no DB e atualiza contador.
+ */
+export default async function submitForm(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).end("Method Not Allowed");
   }
 
-  // Pode chegar um array ou um único objeto
-  const alunos = Array.isArray(req.body) ? req.body : [req.body];
+  // Pode chegar um array ou um único objeto no "req.body"
+  const itensRecebidos = Array.isArray(req.body) ? req.body : [req.body];
   const resultados: any[] = [];
 
-  for (const alunoData of alunos) {
-    const { turmaSelecionada, aluno } = alunoData;
-    const modalidade = "volei"; // Modalidade fixa
+  for (const item of itensRecebidos) {
+    const { turmaSelecionada, aluno } = item;
 
+    // Modalidade fixa, ex.: "volei"
+    const modalidade = "volei";
+
+    // Se não foi informada a turma, erro.
     if (!turmaSelecionada) {
-      resultados.push({ sucesso: false, erro: "Turma não informada", aluno });
+      resultados.push({
+        sucesso: false,
+        erro: "Turma não informada.",
+        aluno,
+      });
       continue;
     }
 
     try {
-      // 1) Localiza a turma no DB
-      //    Buscando pelo campo "nome_da_turma" igual a turmaSelecionada
+      // 1) Localiza a turma que tenha "nome_da_turma = turmaSelecionada"
       const turmaRef = db
         .ref(`modalidades/${modalidade}/turmas`)
         .orderByChild("nome_da_turma")
         .equalTo(turmaSelecionada);
-      const snapshot = await turmaRef.once("value");
 
+      const snapshot = await turmaRef.once("value");
       if (!snapshot.exists()) {
         resultados.push({
           sucesso: false,
@@ -47,27 +89,31 @@ export default async function submitForm(req: NextApiRequest, res: NextApiRespon
         continue;
       }
 
-      // 2) Pega os dados da turma (Key e conteúdo)
+      // Extrai a key e os dados da turma
       const turmaData = snapshot.val();
       const turmaKey = Object.keys(turmaData)[0];
-      const turma = turmaData[turmaKey];
+      const turmaEncontrada = turmaData[turmaKey];
 
-      // Se a turma está cheia
-      if (turma.capacidade_atual_da_turma >= turma.capacidade_maxima_da_turma) {
+      // 2) Verifica se a turma está cheia
+      if (
+        turmaEncontrada.capacidade_atual_da_turma >=
+        turmaEncontrada.capacidade_maxima_da_turma
+      ) {
         resultados.push({
           sucesso: false,
-          erro: `Não há vagas disponíveis na turma ${turma.nome_da_turma}.`,
+          erro: `Não há vagas na turma ${turmaEncontrada.nome_da_turma}.`,
           aluno,
         });
         continue;
       }
 
-      // 3) Verifica se esse aluno já está cadastrado (nome normalizado)
+      // 3) Verifica se o aluno já está cadastrado (nome normalizado)
       const alunosSnapshot = await db
         .ref(`modalidades/${modalidade}/turmas/${turmaKey}/alunos`)
         .once("value");
       const alunosExistentes = alunosSnapshot.val() || {};
       const nomeAlunoNormalizado = aluno.nome.trim().toLowerCase();
+
       const duplicado = Object.values(alunosExistentes).some(
         (alunoExistente: any) =>
           alunoExistente.nome.trim().toLowerCase() === nomeAlunoNormalizado
@@ -75,43 +121,66 @@ export default async function submitForm(req: NextApiRequest, res: NextApiRespon
       if (duplicado) {
         resultados.push({
           sucesso: false,
-          erro: "Aluno já cadastrado nesta turma.",
+          erro: `Aluno já cadastrado na turma ${turmaEncontrada.nome_da_turma}.`,
           aluno,
         });
         continue;
       }
 
-      // 4) Gera as presenças para TODOS os dias da semana da turma
-      //    Observando que "turma.diasDaSemana" deve ser um array, ex: ["SEGUNDA","QUARTA"]
-      const diasTurma = Array.isArray(turma.diasDaSemana)
-        ? turma.diasDaSemana
-        : [turma.diaDaSemana]; // fallback se for string
-      const presencasGeradas = gerarPresencasParaVariosDias(diasTurma);
-      aluno.presencas = presencasGeradas;
+      // 4) Gera presenças para cada dia da semana (array "turmaEncontrada.diasDaSemana").
+      //    Se for string, converte para array de 1 dia.
+      const diasDaTurma = Array.isArray(turmaEncontrada.diasDaSemana)
+        ? turmaEncontrada.diasDaSemana
+        : [turmaEncontrada.diaDaSemana]; // fallback
 
-      // 5) Define data de matrícula, foto e Identificador único
-      aluno.dataMatricula = new Date().toLocaleDateString();
+      // Detecta o semestre com base no mês atual
+      const mesAtual = new Date().getMonth() + 1; // 1..12
+     const semestreDetectado = mesAtual < 7 ? "primeiro" : "segundo";
+    // const semestreDetectado = "segundo";
+      const anoAtual = new Date().getFullYear();
+
+      // Precisamos mesclar as presenças de cada dia. Iniciamos um objeto vazio.
+      let presencasFinais: Record<string, Record<string, boolean>> = {};
+
+      for (const diaSemana of diasDaTurma) {
+        // Gera presenças para esse dia, nesse semestre e ano
+        const presencasUmDia = gerarPresencasParaAlunoSemestre(
+          diaSemana,          // ex.: "SEGUNDA"
+          semestreDetectado,  // "primeiro" ou "segundo"
+          anoAtual
+        );
+
+        // Mesclamos no objeto final
+        presencasFinais = mesclarPresencas(presencasFinais, presencasUmDia);
+      }
+
+      // 5) Atribui no aluno
+      aluno.presencas = presencasFinais;
+
+      // Define data de matrícula e UUID
+      aluno.dataMatricula = new Date().toLocaleDateString("pt-BR");
       if (!aluno.informacoesAdicionais) {
         aluno.informacoesAdicionais = {};
       }
       aluno.informacoesAdicionais.IdentificadorUnico = uuidv4();
 
-      // 6) Gera um ID incremental
+      // 6) Gera ID incremental
       const novoIdAluno = Object.keys(alunosExistentes).length + 1;
       aluno.id = novoIdAluno;
 
-      // 7) Salva o aluno na turma
+      // 7) Salva no DB
       await db
         .ref(`modalidades/${modalidade}/turmas/${turmaKey}/alunos/${novoIdAluno}`)
         .set(aluno);
 
-      // 8) Atualiza capacidade_atual e contadorAlunos
+      // 8) Atualiza contadores da turma
       await db.ref(`modalidades/${modalidade}/turmas/${turmaKey}`).update({
-        capacidade_atual_da_turma: turma.capacidade_atual_da_turma + 1,
+        capacidade_atual_da_turma:
+          turmaEncontrada.capacidade_atual_da_turma + 1,
         contadorAlunos: novoIdAluno,
       });
 
-      // 9) Sucesso
+      // 9) Sucesso: empurra no array de resultados
       resultados.push({ sucesso: true, aluno });
     } catch (erro: any) {
       resultados.push({ sucesso: false, erro: erro.message, aluno });
