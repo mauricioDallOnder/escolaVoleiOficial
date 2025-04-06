@@ -212,6 +212,8 @@ export interface IIAlunoUpdate extends Omit<Aluno, 'id' | 'presencas'> {
   nome: string;
   informacoesAdicionais: InformacoesAdicionais;
   dataMatricula?: string;
+  nomeDaTurma:string
+  modalidade:string
 }
 
 export interface ArchiveAluno extends Omit<Aluno, 'id' | 'presencas'> {
