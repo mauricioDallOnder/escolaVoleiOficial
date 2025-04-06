@@ -1,220 +1,198 @@
 import React, { useEffect, useState } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
-import { Button, Container, Grid, TextField, Typography, MenuItem, Paper, CircularProgress, Snackbar } from "@mui/material";
-import { v4 as uuidv4 } from 'uuid';
+import {
+  Button,
+  Container,
+  Grid,
+  TextField,
+  Typography,
+  MenuItem,
+  Paper,
+  Snackbar
+} from "@mui/material";
+import { v4 as uuidv4 } from "uuid";
 import {
   TituloSecaoStyle,
   modalStyleTemporaly,
 } from "@/utils/Styles";
-import { extrairDiaDaSemana, gerarPresencasParaAluno } from "@/utils/Constants";
+
+// Importamos a função para gerar presenças em vários dias
+import { gerarPresencasParaVariosDias } from "@/utils/Constants";
+
+// Importamos o contexto e tipos necessários
 import { useData } from "@/context/context";
 import { FormValuesStudent, Turma } from "@/interface/interfaces";
+
+// Se você precisa corrigir dados após cadastrar, mantenha; senão pode remover
 import { CorrigirDadosDefinitivos } from "@/utils/CorrigirDadosTurmasEmComponetes";
 
-
+// Propriedades do componente
 interface TemporaryStudentRegistrationProps {
   handleCloseModal: () => void;
 }
 
+// Componente principal
 export default function TemporaryStudentRegistration({
   handleCloseModal,
 }: TemporaryStudentRegistrationProps) {
+  // useForm do React Hook Form
   const {
     register,
     handleSubmit,
-    watch,
     reset,
     formState: { isSubmitting, errors },
   } = useForm<FormValuesStudent>();
+
+  // Funções e dados vindos do contexto
   const { modalidades, fetchModalidades, sendDataToApi } = useData();
-  const [selectedNucleo, setSelectedNucleo] = useState<string>("");
-  const [nucleosDisponiveis, setNucleosDisponiveis] = useState<string[]>([]);
+
+  // Estado para turmas disponíveis
   const [turmasDisponiveis, setTurmasDisponiveis] = useState<Turma[]>([]);
+  // Estado para armazenar o nome do aluno digitado
   const [studentName, setStudentName] = useState("");
+  // Estado para controlar se estamos aguardando alguma atualização
   const [isUpdating, setIsUpdating] = useState(false);
+  // Estado para mensagem de sucesso (SnackBar)
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Efeito para carregar as modalidades (e as turmas da modalidade "volei")
   useEffect(() => {
-    fetchModalidades();
-  }, [fetchModalidades]);
+    fetchModalidades().then(() => {
+      // Aqui supomos que você só tem "volei"; se tiver outra, adapte
+      const modalidadeVolei = modalidades.find(
+        (mod) => mod.nome.toLowerCase() === "volei"
+      );
+      if (modalidadeVolei && Array.isArray(modalidadeVolei.turmas)) {
+        setTurmasDisponiveis(modalidadeVolei.turmas);
+      }
+    });
+  }, [fetchModalidades, modalidades]);
 
-  const handleNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newName = event.target.value;
-    setStudentName(newName);
+  // Callback para atualizar o nome do aluno digitado
+  const handleStudentNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setStudentName(event.target.value);
   };
 
-  const onSubmit: SubmitHandler<FormValuesStudent> = async (data) => {
+  // Função chamada ao enviar o formulário (React Hook Form)
+  const onFormSubmit: SubmitHandler<FormValuesStudent> = async (formData) => {
     setIsUpdating(true);
-    const currentDate = new Date().toLocaleDateString();
-    const presencas = gerarPresencasParaAluno(extrairDiaDaSemana(data.turmaSelecionada));
 
-    // Construindo o objeto aluno com valores padrão e adicionando todos os campos necessários
-    data.aluno = {
-      ...data.aluno,
+    // Data de matrícula atual
+    const currentDateString = new Date().toLocaleDateString();
+
+    // 1) Precisamos saber os dias da semana da turma selecionada
+    //    Então buscamos no array `turmasDisponiveis` a turma escolhida
+    const turmaEncontrada = turmasDisponiveis.find(
+      (turma) => turma.nome_da_turma === formData.turmaSelecionada
+    );
+
+    // 2) Extraímos o array de dias da semana ou fallback se não existir
+    let arrayDediaDaSemana: string[] = ["SEGUNDA"]; // fallback
+    if (turmaEncontrada && Array.isArray(turmaEncontrada.diaDaSemana)) {
+      arrayDediaDaSemana = turmaEncontrada.diaDaSemana;
+    }
+
+    // 3) Geramos as presenças para todos esses dias (SEM abreviações)
+    const presencasGeradas = gerarPresencasParaVariosDias(arrayDediaDaSemana);
+
+    // 4) Montamos o objeto final do aluno
+    formData.aluno = {
+      // Precisamos do 'id' para corresponder ao tipo que exige 'id' ou 'alunoId'
+      id: 50, // ou outro valor se seu back-end atualizar
+      alunoId:50,
+      // caso exija 'alunoId', inclua aqui:
+      // alunoId: 0,
       nome: studentName,
-      dataMatricula: currentDate,
-      anoNascimento: "01/01/1900",
-      telefoneComWhatsapp: "-",
+      anoNascimento: "2000-01-01", // Ajuste se quiser capturar de outro campo
+      dataMatricula: currentDateString,
+      telefoneComWhatsapp: "00000000000", // Ajuste se for capturado do form
+
+      // informacoesAdicionais com todos os campos que fazem parte da sua estrutura
       informacoesAdicionais: {
         IdentificadorUnico: uuidv4(),
-        cobramensalidade: "Ciente",
-        competicao: "Sim",
-        convenio: "Nenhum",
-        endereco: {
-          bairro: "-",
-          cep: "0000000",
-          complemento: "-",
-          numeroResidencia: "-",
-          ruaAvenida: "-"
-        },
-        escolaEstuda: "-",
-        filhofuncionarioJBS: "Não",
-        filhofuncionariomarcopolo: "Não",
+        Nome__do_responsavel: "Responsável Temporário",
+        Possui_alergia: "Não",
+        bairro: "Bairro Temporário",
+        cep: "00000000",
+        complemento: "",
+        data_de_nascimento_responsavel: "2000-01-01",
+        documento_do_responsavel: "00000000000",
+        email_do_responsavel: "temporaryEmail@example.com",
+        endereco: "Endereço Temporário",
+        funcao_do_responsavel: "Função Responsável",
         hasUniforme: false,
-        imagem: "Ciente",
-        irmaos: "Não",
-        nomefuncionarioJBS: "Não",
-        nomefuncionariomarcopolo: "Não",
-        pagadorMensalidades: {
-          celularWhatsapp: "-",
-          cpf: "0000000000",
-          email: "temporario@gmail.com",
-          nomeCompleto: "-"
-        },
-        problemasaude: "Não",
-        rg: "-",
-        socioJBS: "Não",
-        tipomedicacao: "Nenhum",
-        uniforme: "G adulto",
-        nucleoTreinamento: selectedNucleo,
-        comprometimentoMensalidade: "Não",
-        copiaDocumento: "Não",
-        avisaAusencia: "Não",
-        desconto: "Não aplicável"
+        local_de_trabalho_do_responsavel: "Local de Trabalho Temporário",
+        nome_contato_emergencia: "Contato Emergência Temporário",
+        numero_endereço: "0",
+        plano_de_saude: "Nenhum",
+        primeiro_telefone_do_responsavel: "00000000000",
+        segundo_telefone_do_responsavel: "00000000000",
+        telefone_comercial_do_responsavel: "00000000000",
+        telefone_contato_emergencia: "00000000000",
+        uniforme_do_aluno: "P",
+        uniforme:"p"
       },
-      presencas: presencas,
-      foto: "-"
+      presencas: presencasGeradas,
+      foto: "-",
     };
 
     try {
-      console.log(data);
-      await sendDataToApi([data]); // Enviando os dados do aluno
+      // Envia para a API, usando seu método do contexto
+      await sendDataToApi([formData]);
 
-      // Chamar o endpoint para ajustar os dados da turma
-     CorrigirDadosDefinitivos();
+      // Se precisar corrigir dados da turma no DB (contadores, etc.), chame
+      // Caso não precise, remova
+      CorrigirDadosDefinitivos();
 
-      setSuccessMessage("Aluno temporário adicionado com sucesso.");
-      reset(); // Resetando o formulário após o envio
-    } catch (error) {
-      console.error("Erro ao enviar os dados do formulário", error);
+      // Exibe mensagem e limpa formulário
+      setSuccessMessage("Aluno temporário cadastrado com sucesso.");
+      reset();
+    } catch (erro) {
+      console.error("Erro ao enviar os dados do aluno temporário:", erro);
     } finally {
       setIsUpdating(false);
     }
   };
 
-  const getNucleosForModalidade = (modalidade: string) => {
-    const turmas = modalidades.find((m) => m.nome === modalidade)?.turmas;
-    if (!turmas) return [];
-    const nucleos = new Set(turmas.map((turma) => turma.nucleo));
-    return Array.from(nucleos);
-  };
-
-  useEffect(() => {
-    const nucleos = getNucleosForModalidade(watch("modalidade"));
-    setNucleosDisponiveis(nucleos);
-    setSelectedNucleo("");
-  }, [watch("modalidade"), modalidades]);
-
-  useEffect(() => {
-    const turmasFiltradas = modalidades
-      .find((m) => m.nome === watch("modalidade"))
-      ?.turmas.filter((turma) => turma.nucleo === selectedNucleo);
-    setTurmasDisponiveis(turmasFiltradas || []);
-  }, [selectedNucleo, modalidades]);
-
   return (
     <Container>
-     
       <Paper sx={modalStyleTemporaly}>
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={handleSubmit(onFormSubmit)}>
           <Typography sx={TituloSecaoStyle}>
             Cadastro de Alunos Temporários
           </Typography>
-          <Grid
-            container
-            spacing={2}
-            justifyContent="center"
-            alignItems="center"
-          >
+
+          <Grid container spacing={2} justifyContent="center" alignItems="center">
+            {/* Campo: Nome do Aluno */}
             <Grid item xs={12}>
               <TextField
                 fullWidth
                 label="Nome do Aluno"
                 variant="standard"
-                {...register("aluno.nome")}
                 required
-                onChange={handleNameChange} // Atualiza o nome quando o campo é alterado
+                onChange={handleStudentNameChange}
               />
             </Grid>
-            {/* Restante dos campos do formulário */}
-            <Grid item xs={12} sm={4}>
+
+            {/* Campo: Turma (Select) */}
+            <Grid item xs={12}>
               <TextField
                 select
-                required
-                label="Modalidade"
-                {...register("modalidade")}
-                fullWidth
-                variant="outlined"
-                sx={{ marginBottom: 2 }}
-              >
-                {modalidades.map((modalidade) => (
-                  <MenuItem key={modalidade.nome} value={modalidade.nome}>
-                    {modalidade.nome}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                select
-                label="Local de treinamento"
-                value={selectedNucleo ? selectedNucleo : ""}
-                onChange={(event) =>
-                  setSelectedNucleo(event.target.value as string)
-                }
-                fullWidth
-                required
-                variant="outlined"
-                sx={{ marginBottom: 2 }}
-              >
-                {nucleosDisponiveis.map((nucleo) => (
-                  <MenuItem key={nucleo} value={nucleo}>
-                    {nucleo}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                select
-                label="Turma"
+                label="Turma Selecionada"
                 {...register("turmaSelecionada")}
                 fullWidth
                 required
                 variant="outlined"
-                sx={{ marginBottom: 2 }}
               >
                 {turmasDisponiveis.map((turma) => (
-                  <MenuItem
-                    key={turma.nome_da_turma}
-                    value={turma.nome_da_turma}
-                  >
+                  <MenuItem key={turma.nome_da_turma} value={turma.nome_da_turma}>
                     {turma.nome_da_turma}
                   </MenuItem>
                 ))}
               </TextField>
             </Grid>
-            {/* Botões */}
+
+            {/* Botões de ação */}
             <Grid item xs={12} sm={6}>
               <Button
                 type="submit"
@@ -222,7 +200,7 @@ export default function TemporaryStudentRegistration({
                 disabled={isSubmitting || isUpdating}
                 fullWidth
               >
-                {isUpdating ? "Atualizando turma... aguarde" : "Cadastrar aluno"}
+                {isUpdating ? "Cadastrando... Aguarde" : "Cadastrar Aluno"}
               </Button>
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -238,6 +216,8 @@ export default function TemporaryStudentRegistration({
           </Grid>
         </form>
       </Paper>
+
+      {/* Snackbar de sucesso */}
       <Snackbar
         open={!!successMessage}
         autoHideDuration={6000}
