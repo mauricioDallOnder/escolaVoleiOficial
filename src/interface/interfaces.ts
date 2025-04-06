@@ -1,4 +1,4 @@
-import { anoNascimentoSchema } from '@/utils/Constants'
+import { anoNascimentoSchema, Presencas } from '@/utils/Constants'
 import { Key } from 'react'
 import { z } from 'zod'
 
@@ -61,30 +61,30 @@ export interface Endereco {
   cep: number | string;
 }
 
+// Exemplo de "informacoesAdicionais"
 export interface InformacoesAdicionais {
-  endereco: string;
-  numero_endereço: number | string;
-  complemento?: string;
-  bairro: string;
-  cep: number | string;
-  plano_de_saude: string;
-  Possui_alergia: string;
-  nome_contato_emergencia: string;
-  telefone_contato_emergencia: number | string;
+  IdentificadorUnico: string;
   Nome__do_responsavel: string;
+  Possui_alergia: string;
+  bairro: string;
+  cep: string;
+  complemento: string;
   data_de_nascimento_responsavel: string;
   documento_do_responsavel: string;
-  primeiro_telefone_do_responsavel: number | string;
-  segundo_telefone_do_responsavel: number | string;
   email_do_responsavel: string;
-  local_de_trabalho_do_responsavel: string;
+  endereco: string;
   funcao_do_responsavel: string;
-  telefone_comercial_do_responsavel: number | string;
+  hasUniforme: boolean;
+  local_de_trabalho_do_responsavel: string;
+  nome_contato_emergencia: string;
+  numero_endereço: string;
+  plano_de_saude: string;
+  primeiro_telefone_do_responsavel: string;
+  segundo_telefone_do_responsavel: string;
+  telefone_comercial_do_responsavel: string;
+  telefone_contato_emergencia: string;
   uniforme_do_aluno: string;
-  // Termos (não serão salvos no banco de dados, mas usados apenas para verificação)
-  uniforme:string
-  hasUniforme:boolean
-  IdentificadorUnico:string
+  uniforme: string;
 }
 
 export interface IIAvisos {
@@ -176,12 +176,22 @@ export interface AdminPageProps {
   modalidades: Modalidade[];
 }
 
-export type FormValuesStudent = {
-  formData: { id: number; nome: string; anoNascimento: string; dataMatricula: string; telefoneComWhatsapp: string; informacoesAdicionais: { IdentificadorUnico: string; Nome__do_responsavel: string; Possui_alergia: string; bairro: string; cep: string; complemento: string; data_de_nascimento_responsavel: string; documento_do_responsavel: string; email_do_responsavel: string; endereco: string; funcao_do_responsavel: string; hasUniforme: false; local_de_trabalho_do_responsavel: string; nome_contato_emergencia: string; numero_endereço: string; plano_de_saude: string; primeiro_telefone_do_responsavel: string; segundo_telefone_do_responsavel: string; telefone_comercial_do_responsavel: string; telefone_contato_emergencia: string; uniforme_do_aluno: string; uniforme: string; }; presencas: import("/workspaces/escolaVoleiOficial/src/utils/Constants").Presencas; foto: string; };
-  data: { nome: string; anoNascimento: string; dataMatricula: string; telefoneComWhatsapp: string; informacoesAdicionais: { IdentificadorUnico: string; Nome__do_responsavel: string; Possui_alergia: string; bairro: string; cep: string; complemento: string; data_de_nascimento_responsavel: string; documento_do_responsavel: string; email_do_responsavel: string; endereco: string; funcao_do_responsavel: string; hasUniforme: false; local_de_trabalho_do_responsavel: string; nome_contato_emergencia: string; numero_endereço: string; plano_de_saude: string; primeiro_telefone_do_responsavel: string; segundo_telefone_do_responsavel: string; telefone_comercial_do_responsavel: string; telefone_contato_emergencia: string; uniforme: string; uniforme_do_aluno: string; }; presencas: import("/workspaces/escolaVoleiOficial/src/utils/Constants").Presencas; foto: string; };
-  aluno: Omit<AlunoPresencaUpdate, 'modalidade' | 'nomeDaTurma'>;
+// Exemplo de "aluno"
+export interface AlunoParaForm {
+  id: number;
+  nome: string;
+  anoNascimento: string;
+  dataMatricula: string;
+  telefoneComWhatsapp: string;
+  informacoesAdicionais: InformacoesAdicionais;
+  presencas: Presencas;
+  foto: string;
+}
+// A interface final do form
+export interface FormValuesStudent {
+  aluno: AlunoParaForm;
   turmaSelecionada: string;
-};
+}
 
 export interface ModalidadesData {
   [modalidade: string]: {
