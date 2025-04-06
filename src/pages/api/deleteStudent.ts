@@ -3,7 +3,7 @@ import admin from '../../config/firebaseAdmin';
 
 const db = admin.database();
 // Defina a modalidade única; ajuste conforme sua estrutura no Firebase.
-const modalidadeDefault = "default";
+const modalidadeDefault = "volei";
 
 async function removerAluno(nomeDaTurma: string, identificadorUnico: string): Promise<void> {
   console.log('Iniciando a remoção do aluno...');

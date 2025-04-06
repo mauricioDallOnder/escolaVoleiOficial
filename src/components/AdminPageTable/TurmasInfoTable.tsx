@@ -121,7 +121,6 @@ export default function TurmasInfoTable() {
           <TableHead>
             <TableRow sx={{ bgcolor: 'primary.main' }}>
               <TableCell sx={{ color: 'primary.contrastText'}}>Nome da Turma</TableCell>
-              <TableCell sx={{ color: 'primary.contrastText', textAlign:"center" }}>Núcleo</TableCell>
               <TableCell sx={{ color: 'primary.contrastText', textAlign:"center" }}>Categoria</TableCell>
               <TableCell sx={{ color: 'primary.contrastText', textAlign:"center" }}>Capacidade Máxima</TableCell>
               <TableCell sx={{ color: 'primary.contrastText', textAlign:"center" }}>Capacidade Atual</TableCell>
@@ -154,7 +153,6 @@ export default function TurmasInfoTable() {
                   >
                     {nomeDaTurmaDisplay}
                   </TableCell>
-                  <TableCell sx={{ color: 'text.primary', textAlign:"center" }}>{turma.nucleo}</TableCell>
                   <TableCell sx={{ color: 'text.primary', textAlign:"center" }}>{turma.categoria}</TableCell>
                   <TableCell sx={{ color: 'text.primary', textAlign:"center" }}>{turma.capacidade_maxima_da_turma}</TableCell>
                   <TableCell sx={{ color: 'text.primary', textAlign:"center" }}>{turma.capacidade_atual_da_turma}</TableCell>

@@ -1,135 +1,94 @@
 import { FieldValues, FieldErrors } from 'react-hook-form';
 import { z } from 'zod';
+// Campos de Identificação (dados principais do aluno)
+
 export const fieldsIdentificacao = [
   { label: "Nome Completo do Aluno(a)", id: "aluno.nome" },
   { label: "Data de Nascimento do Aluno(a)", id: "aluno.anoNascimento" },
-  { label: "Número de Telefone com WhatsApp", id: "aluno.telefoneComWhatsapp" },
-  {
-    label: "Número do RG (ou Certidão de Nascimento, temporariamente).",
-    id: "aluno.informacoesAdicionais.rg",
-  },
+  { label: "Documento", id: "aluno.documento" },
 ];
+
+// Campos de Endereço (dados complementares)
 export const fieldsEndereco = [
-  { label: "Rua/Avenida", id: "aluno.informacoesAdicionais.endereco.ruaAvenida" },
-  {
-    label: "Nº da Residência:",
-    id: "aluno.informacoesAdicionais.endereco.numeroResidencia",
-  },
-  { label: "Bairro", id: "aluno.informacoesAdicionais.endereco.bairro" },
-  { label: "CEP", id: "aluno.informacoesAdicionais.endereco.cep" },
-  
-];
-//pagadorMensalidades
-export const fieldsResponsavelMensalidade = [
-  {
-    label: "Nome completo",
-    id: "aluno.informacoesAdicionais.pagadorMensalidades.nomeCompleto",
-  },
-  { label: "CPF", id: "aluno.informacoesAdicionais.pagadorMensalidades.cpf" },
-  {
-    label: "Endereço de E-mail do Responsável",
-    id: "aluno.informacoesAdicionais.pagadorMensalidades.email",
-  },
-  {
-    label: "Telefone para emergências",
-    id: "aluno.informacoesAdicionais.pagadorMensalidades.celularWhatsapp",
-  },
+  { label: "Endereço", id: "aluno.informacoesAdicionais.endereco" },
+  { label: "Número", id: "aluno.informacoesAdicionais.numero_endereço" },
+  { label: "Complemento", id: "aluno.informacoesAdicionais.complemento" },
+  { label: "Bairro", id: "aluno.informacoesAdicionais.bairro" },
+  { label: "CEP", id: "aluno.informacoesAdicionais.cep" },
 ];
 
-//Informe se possui irmão(s) que também treinam conosco e seus nomes.
-
-export const fieldsDadosGeraisAtleta = [
-  {
-    label: "Escola em que o Aluno(a) estuda atualmente",
-    id: "aluno.informacoesAdicionais.escolaEstuda",
-  },
-  { label: "Possui irmãos que treinam conosco?.", id: "aluno.informacoesAdicionais.irmaos" },
-  {
-    label: "Possui problemas de saúde? Quais? ",
-    id: "aluno.informacoesAdicionais.problemasaude",
-  },
-
-  {
-    label: "Quais medicamentos utiliza?",
-    id: "aluno.informacoesAdicionais.tipomedicacao",
-  },
-  {
-    label: "Qual convênio/ plano de saúde?",
-    id: "aluno.informacoesAdicionais.convenio",
-  },
-  {
-    label:
-      "Está autorizado a participar de competições?",
-    id: "aluno.informacoesAdicionais.competicao",
-  },
- 
- 
-];
-export const vinculosempresasparceiras = [
-  {
-    label: "O aluno(a) é filho(a) de funcionário(a) da JBS?",
-    id: "aluno.informacoesAdicionais.filhofuncionarioJBS",
-  },
-  {
-    label: "O responsável é sócio da sede da JBS?",
-    id: "aluno.informacoesAdicionais.socioJBS",
-  },
-  {
-    label: "Nome do Funcionário(a) da JBS (Pai/Mãe do Aluno):",
-    id: "aluno.informacoesAdicionais.nomefuncionarioJBS",
-  },
-  {
-    label: "O aluno(a) é filho(a) de funcionário(a) da Marcopolo?",
-    id: "aluno.informacoesAdicionais.filhofuncionariomarcopolo",
-  },
-  {
-    label: "Nome do Funcionário(a) da Marcopolo (Pai/Mãe do Aluno):",
-    id: "aluno.informacoesAdicionais.nomefuncionariomarcopolo",
-  }
+// Campos de Saúde
+export const fieldsSaude = [
+  { label: "Plano de Saúde", id: "aluno.informacoesAdicionais.plano_de_saude" },
+  { label: "Possui Alergia", id: "aluno.informacoesAdicionais.Possui_alergia" },
+  { label: "Nome Contato Emergência", id: "aluno.informacoesAdicionais.nome_contato_emergencia" },
+  { label: "Telefone Contato Emergência", id: "aluno.informacoesAdicionais.telefone_contato_emergencia" },
 ];
 
+
+// Dados do Responsável
+export const fieldsResponsavel = [
+  { label: "Nome do Responsável", id: "aluno.informacoesAdicionais.Nome__do_responsavel" },
+  { label: "Data de Nascimento do Responsável", id: "aluno.informacoesAdicionais.data_de_nascimento_responsavel" },
+  { label: "Documento do Responsável", id: "aluno.informacoesAdicionais.documento_do_responsavel" },
+  { label: "Primeiro Telefone do Responsável", id: "aluno.informacoesAdicionais.primeiro_telefone_do_responsavel" },
+  { label: "Segundo Telefone do Responsável", id: "aluno.informacoesAdicionais.segundo_telefone_do_responsavel" },
+  { label: "Email do Responsável", id: "aluno.informacoesAdicionais.email_do_responsavel" },
+  { label: "Local de Trabalho do Responsável", id: "aluno.informacoesAdicionais.local_de_trabalho_do_responsavel" },
+  { label: "Função do Responsável", id: "aluno.informacoesAdicionais.funcao_do_responsavel" },
+  { label: "Telefone Comercial do Responsável", id: "aluno.informacoesAdicionais.telefone_comercial_do_responsavel" },
+];
+
+// Uniforme
 export const fieldsUniforme = [
-  {
-    label:
-      "Uniforme Obrigatório: R$ 110,00 para futsal e vôlei masculino (calção, camiseta e meia), R$ 150,00 para vôlei feminino (short, camiseta e meia). Pagamento à vista ou parcelado em 1+2 vezes. Por favor, informe o tamanho do uniforme do seu filho(a) abaixo:",
-    id: "aluno.informacoesAdicionais.uniforme",
-  },
+  { label: "Uniforme do Aluno", id: "aluno.informacoesAdicionais.uniforme_do_aluno" },
 ];
-
-
-//
+/*
 export const fieldsTermosAvisos = [
   {
     label:
-      "A cobrança da mensalidade será interrompida somente após o comunicado formal de cancelamento da matrícula, que deve ser realizado até o dia 28 do mês corrente para evitar cobranças no mês seguinte.",
-    id: "aluno.informacoesAdicionais.cobramensalidade",
+      "Li e estou ciente que o contrato é de um ano, de março até fevereiro do ano seguinte.",
+    id: "aluno.informacoesAdicionais.termo_contrato",
   },
   {
     label:
-      "Você se compromete a avisar antecipadamente a ausência de seu filho(a) aos treinos, bem como a informar sobre possíveis problemas de saúde?",
-    id: "aluno.informacoesAdicionais.avisaAusencia",
+      "Li e estou ciente que o vencimento da mensalidade é no dia 12 de cada mês.",
+    id: "aluno.informacoesAdicionais.termo_vencimento",
   },
   {
     label:
-      "Comprometo-me a pagar a mensalidade dos treinos até o dia 10 de cada mês e, em caso de cancelamento, a comunicar até o dia 28 do mês corrente para evitar cobranças futuras.",
-    id: "aluno.informacoesAdicionais.comprometimentoMensalidade",
+      "A ausência do aluno não isenta das obrigações de pagamento, sem reposições de aulas.",
+    id: "aluno.informacoesAdicionais.termo_ausencia",
   },
   {
     label:
-      "Concordo com: desconto de R$ 5,00 seja dado SOMENTE para pagamentos até dia 10, independentemente do dia da semana; não devolução ou isenção de pagamento de mensalidades ou valores parciais correspondentes a treinos não realizados, exceto em situações em que o afastamento for justificado por atestado médico; em caso de faltas, o aluno terá o direito a recuperar o treino perdido. Treinos que coincidam com dias de feriado não serão recuperados.",
-    id: "aluno.informacoesAdicionais.desconto",
+      "Em caso de cancelamento, será cobrado o valor equivalente a uma mensalidade mais R$10,00 por boleto.",
+    id: "aluno.informacoesAdicionais.termo_cancelamento",
   },
   {
     label:
-      "Você declara que o pré-mencionado menor está em perfeitas condições de saúde, podendo participar de treinos e competições?",
-    id: "aluno.informacoesAdicionais.condicaosaude",
+      "Comprometo-me a avisar antecipadamente a ausência do aluno e informar sobre problemas de saúde.",
+    id: "aluno.informacoesAdicionais.termo_aviso_saude",
   },
-    {
+  {
+    label: "Estou de acordo com o desconto *",
+    id: "aluno.informacoesAdicionais.termo_desconto",
+  },
+  {
     label:
-      "O uso da imagem e nome do(a) atleta será utilizado para fins legítimos de divulgação e promoção da marca, sem ônus",
-      id: "aluno.informacoesAdicionais.imagem",
+      "Declaro que o menor está em perfeitas condições de saúde para participar de treinos e competições.",
+    id: "aluno.informacoesAdicionais.termo_condicoes_saude",
   },
-];
+  {
+    label: "Sim, declaro. *",
+    id: "aluno.informacoesAdicionais.termo_declaracao",
+  },
+  {
+    label:
+      "Concordo que a imagem e o nome do atleta serão utilizados para divulgação e promoção.",
+    id: "aluno.informacoesAdicionais.termo_imagem",
+  },
+] 
 
 type OpcoesTermosAvisos = {
   [key: string]: string[];
@@ -148,10 +107,9 @@ export const opcoesTermosAvisos: OpcoesTermosAvisos = {
   condicaosaude: ["Sim, declaro."],
   imagem:["Ciente"]
 };
-
+*/
 //----------------------------------------------------------------------------------------------
 // src/utils/Constants.ts
-
 export interface Presencas {
   [mes: string]: {
     [data: string]: boolean;
@@ -160,6 +118,28 @@ export interface Presencas {
 
 interface DiasDaSemanaMap {
   [dia: string]: number;
+}
+
+// Função auxiliar para gerar datas de UM dia no mês
+export function gerarDiasDoMes(
+  ano: number,
+  mes: number,
+  diaDaSemana: number
+): string[] {
+  const datas: string[] = [];
+  let data = new Date(ano, mes - 1, 1);
+
+  // Ajusta para o primeiro "diaDaSemana" do mês
+  while (data.getDay() !== diaDaSemana) {
+    data.setDate(data.getDate() + 1);
+  }
+
+  // Enquanto ainda estiver no mesmo mês, avança de 7 em 7 dias
+  while (data.getMonth() === mes - 1) {
+    datas.push(`${data.getDate()}-${mes}-${data.getFullYear()}`);
+    data.setDate(data.getDate() + 7);
+  }
+  return datas;
 }
 
 /**
@@ -186,32 +166,6 @@ export function extrairDiaDaSemana(nomeDaTurma: string): string {
   return diaEncontrado?.toUpperCase() || "SEGUNDA";
 }
 
-/**
- * Gera uma lista de datas (dd-mm-aaaa) para um determinado diaDaSemana,
- * em um determinado mês e ano.
- * Usado na função gerarPresencasParaAluno (ano corrente / mesAtual).
- */
-export function gerarDiasDoMes(
-  ano: number,
-  mes: number,
-  diaDaSemana: number
-): string[] {
-  let datas: string[] = [];
-  let data = new Date(ano, mes - 1, 1);
-
-  // Ajusta para o primeiro "diaDaSemana" do mês
-  while (data.getDay() !== diaDaSemana) {
-    data.setDate(data.getDate() + 1);
-  }
-
-  // Enquanto ainda estiver no mesmo mês, avança de 7 em 7 dias
-  while (data.getMonth() === mes - 1) {
-    const diaFormatado = `${data.getDate()}-${mes}-${ano}`;
-    datas.push(diaFormatado);
-    data.setDate(data.getDate() + 7);
-  }
-  return datas;
-}
 
 /**
  * Gera um objeto de presenças para um aluno, considerando:
@@ -219,9 +173,10 @@ export function gerarDiasDoMes(
  *  - Se o mês atual < 7 => gera de janeiro a junho.
  *  - Caso contrário => gera de julho a dezembro.
  */
-export function gerarPresencasParaAluno(diaDaSemana: string): Presencas {
-  const ano = new Date().getFullYear(); // Ano corrente
-  const diasDaSemana: DiasDaSemanaMap = {
+// ---------- NOVA FUNÇÃO para lidar com vários dias ----------
+export function gerarPresencasParaVariosDias(diasDaSemana: string[]): Presencas {
+  // Mapeia string => número do JavaScript
+  const diasDaSemanaMap: DiasDaSemanaMap = {
     SEGUNDA: 1,
     TERÇA: 2,
     QUARTA: 3,
@@ -231,48 +186,38 @@ export function gerarPresencasParaAluno(diaDaSemana: string): Presencas {
     DOMINGO: 0,
   };
 
-  let presencas: Presencas = {};
-  const mesAtual = new Date().getMonth() + 1; // 1..12
+  const anoCorrente = new Date().getFullYear();
+  const mesAtual = new Date().getMonth() + 1;
 
-  if (mesAtual < 7) {
-    // Gera de janeiro(1) a junho(6)
-    for (let mes = 1; mes <= 6; mes++) {
-      const nomeMes = new Date(ano, mes - 1, 1).toLocaleString("pt-BR", {
-        month: "long",
-      });
-      presencas[nomeMes] = {};
+  // Se o mês atual < 7, geramos presenças de janeiro(1) a junho(6).
+  // Caso contrário, julho(7) a dezembro(12).
+  const inicio = mesAtual < 7 ? 1 : 7;
+  const fim = mesAtual < 7 ? 6 : 12;
 
-      const dias = gerarDiasDoMes(
-        ano,
-        mes,
-        diasDaSemana[diaDaSemana.toUpperCase()]
-      );
-      dias.forEach((data) => {
-        presencas[nomeMes][data] = false;
-      });
-    }
-  } else {
-    // Gera de julho(7) a dezembro(12)
-    for (let mes = 7; mes <= 12; mes++) {
-      const nomeMes = new Date(ano, mes - 1, 1).toLocaleString("pt-BR", {
-        month: "long",
-      });
-      presencas[nomeMes] = {};
+  const presencas: Presencas = {};
 
-      const dias = gerarDiasDoMes(
-        ano,
-        mes,
-        diasDaSemana[diaDaSemana.toUpperCase()]
-      );
-      dias.forEach((data) => {
-        presencas[nomeMes][data] = false;
+  // Percorre cada mês do semestre
+  for (let mes = inicio; mes <= fim; mes++) {
+    // Nome do mês em pt-BR (tudo minúsculo, ou ajusta se preferir)
+    const nomeMes = new Date(anoCorrente, mes - 1, 1).toLocaleString("pt-BR", {
+      month: "long",
+    });
+    presencas[nomeMes] = presencas[nomeMes] || {};
+
+    // Para cada dia da semana escolhido, gera as datas e adiciona no objeto
+    diasDaSemana.forEach((diaSemanaString) => {
+      const diaJs = diasDaSemanaMap[diaSemanaString.toUpperCase()];
+      if (diaJs === undefined) return; // ignora se não for válido
+
+      const datasDoMes = gerarDiasDoMes(anoCorrente, mes, diaJs);
+      datasDoMes.forEach((dataStr) => {
+        presencas[nomeMes][dataStr] = false;
       });
-    }
+    });
   }
 
   return presencas;
 }
-
 /**
  * Gera um objeto de presenças para um aluno, considerando um semestre específico:
  *  - "primeiro": meses jan..jun
@@ -443,3 +388,7 @@ export const anoNascimentoSchema = z.string()
     return name.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   }
   
+
+
+  // { label: "Nome Completo do Aluno(a)", id: "aluno.nome" },
+  //{ label: "Data de Nascimento do Aluno(a)", id: "aluno.anoNascimento" },
