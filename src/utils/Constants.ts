@@ -229,7 +229,7 @@ export function gerarPresencasParaAlunoSemestre(
   semestre: "primeiro" | "segundo",
   ano: number
 ): Presencas {
-  const diaDaSemana: diaDaSemanaMap = {
+  const diasDaSemana: diaDaSemanaMap = {
     SEGUNDA: 1,
     TERÇA: 2,
     QUARTA: 3,
@@ -270,7 +270,7 @@ export function gerarPresencasParaAlunoSemestre(
     const dias = gerarDiasDoMesSemestre(
       ano,
       mesIndex,
-      diaDaSemana[diaDaSemana.toUpperCase()]
+      diasDaSemana[diaDaSemana.toUpperCase()]
     );
     dias.forEach((data) => {
       presencasSemestre[nomeMes][data] = true;
