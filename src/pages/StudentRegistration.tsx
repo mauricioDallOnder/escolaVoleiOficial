@@ -853,7 +853,7 @@ export default function CadastrarAlunoPage() {
                 </Grid>
               </Grid>
             </List>
-            
+           
 
             {/* BOTÃO DE SUBMIT */}
             <Box textAlign="center" marginTop={3}>
