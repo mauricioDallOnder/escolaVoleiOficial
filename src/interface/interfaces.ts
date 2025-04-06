@@ -178,6 +178,7 @@ export interface AdminPageProps {
 
 // Exemplo de "aluno"
 export interface AlunoParaForm {
+  alunoId: number;
   id: number;
   nome: string;
   anoNascimento: string;
