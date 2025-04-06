@@ -240,6 +240,7 @@ export default function CadastrarAlunoPage() {
         } else {
           const erroEncontrado = primeiroResultado.erro || "Erro desconhecido.";
           setMensagem("Falha ao cadastrar o aluno: " + erroEncontrado);
+          alert("Falha ao cadastrar o aluno: " + erroEncontrado);
         }
       } else {
         setMensagem("Retorno inesperado da API.");
