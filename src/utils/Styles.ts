@@ -10,7 +10,7 @@ export const BoxStyleCadastro = {
     borderRadius: "3px",
     boxShadow: "0 9px 40px rgba(42, 42, 42)",
     fontSize: "16px",
-    maxWidth: "752px",
+    maxWidth: "952px",
     width: "100%",
     display: "flex",
     flexDirection: "column",
