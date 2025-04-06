@@ -118,8 +118,7 @@ export default function MoveStudantsTurma() {
       col1: aluno.nome,
       col2: aluno.anoNascimento,
       col3: nomeDaTurma,
-      col4: categoria,
-      col5: aluno.informacoesAdicionais.escolaEstuda,
+      
     };
   });
 
@@ -132,8 +131,6 @@ export default function MoveStudantsTurma() {
     { field: "col1", headerName: "Nome", width: 250 },
     { field: "col2", headerName: "Nascimento", width: 100 },
     { field: "col3", headerName: "Turma", width: 250 },
-    { field: "col4", headerName: "Categoria", width: 100 },
-    { field: "col5", headerName: "Escola que estuda", width: 150 },
     {
       field: "MudarTurma",
       headerName: "Mudar Turma",
