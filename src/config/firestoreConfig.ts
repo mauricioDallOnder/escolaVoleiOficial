@@ -2,13 +2,13 @@ import { initializeApp } from "firebase/app";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCbqEy_tPcSuYpCHnmKp7GKGMYqHhiGgXk",
-  authDomain: "mauriciodallonder-64688.firebaseapp.com",
-  databaseURL: "https://mauriciodallonder-64688-default-rtdb.firebaseio.com",
-  projectId: "mauriciodallonder-64688",
-  storageBucket: "mauriciodallonder-64688.appspot.com",
-  messagingSenderId: "600780731290",
-  appId: "1:600780731290:web:34edbcb57ee87965170023"
+  apiKey: "AIzaSyC_0gthfL1bPC2x_InVsNDXTdY3CdIUpdA",
+  authDomain: "banco-de-dados-abc12.firebaseapp.com",
+  databaseURL: "https://banco-de-dados-abc12-default-rtdb.firebaseio.com",
+  projectId: "banco-de-dados-abc12",
+  storageBucket: "banco-de-dados-abc12.firebasestorage.app",
+  messagingSenderId: "48050327288",
+  appId: "1:48050327288:web:9599086d34ef3e3a63f50d"
 };
 
 // Initialize Firebase
