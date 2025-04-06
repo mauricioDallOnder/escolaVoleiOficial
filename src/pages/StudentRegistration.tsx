@@ -31,6 +31,7 @@ import { PhotoCamera } from "@mui/icons-material";
 import Layout from "@/components/TopBarComponents/Layout";
 import { useData } from "@/context/context";
 import { Turma } from "@/interface/interfaces";
+import { HeaderForm } from "@/components/HeaderDefaultForm";
 
 
 // --------------------------------------------------------------
@@ -252,7 +253,8 @@ export default function CadastrarAlunoPage() {
     <Layout>
       <Container>
         <Box sx={BoxStyleCadastro}>
-          <Typography sx={TituloDaPagina}>Cadastro de Alunos</Typography>
+          <HeaderForm titulo={"Cadastro de Alunos"} />
+          
 
           {mensagem && (
             <Typography sx={{ color: "blue", textAlign: "center", mt: 2 }}>

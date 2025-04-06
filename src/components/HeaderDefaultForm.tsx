@@ -14,23 +14,22 @@ export const HeaderForm=({titulo}:{titulo:string})=>{
         >
           <Avatar
             sx={{
-              width: 80, // tamanho do Avatar
-              height: 80, // tamanho do Avatar
+              width: 100, // tamanho do Avatar
+              height: 100, // tamanho do Avatar
               // boxShadow: 'none' // Descomente se necessário
               backgroundColor: "white",
-              marginTop: "5px",
-              marginBottom: "5px",
+             
             }}
           >
             <Image
-              src="https://firebasestorage.googleapis.com/v0/b/imagens-9116b.appspot.com/o/logoescolinha-removebg-preview(1).png?alt=media&token=c33b14a0-c768-45a1-926f-94b85770f27b"
+              src="https://firebasestorage.googleapis.com/v0/b/chat-dos-otarios.appspot.com/o/logo_volei.png?alt=media&token=f012fe4f-dede-44a2-be37-72ffb07beda5"
               alt=""
               layout="fill" // Isso fará a imagem preencher o Avatar
               objectFit="contain" // Isso garante que a imagem inteira seja visível
             />
           </Avatar>
           <Typography sx={TituloDaPagina}>{titulo}</Typography>
-          <Typography sx={SubtituloDaPagina}>E.E. Rizzo Forqueta</Typography>
+          <Typography sx={SubtituloDaPagina}>Kvôlei</Typography>
         </Box>
     )
 

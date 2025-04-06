@@ -118,7 +118,7 @@ export default function ResponsiveAppBar() {
                 }}
               >
                 <Image
-                  src="https://firebasestorage.googleapis.com/v0/b/imagens-9116b.appspot.com/o/logoescolinha-removebg-preview(1).png?alt=media&token=c33b14a0-c768-45a1-926f-94b85770f27b"
+                  src="https://firebasestorage.googleapis.com/v0/b/chat-dos-otarios.appspot.com/o/logo_volei.png?alt=media&token=f012fe4f-dede-44a2-be37-72ffb07beda5"
                   alt=""
                   layout="fill" // Isso fará a imagem preencher o Avatar
                   objectFit="contain" // Isso garante que a imagem inteira seja visível
