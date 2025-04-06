@@ -826,7 +826,7 @@ export default function CadastrarAlunoPage() {
             </Box>
 
             {/* SEÇÃO 8: TURMA (AGORA UM SELECT CARREGADO DO CONTEXTO) */}
-            <Box sx={ListStyle}>
+           
             <List sx={ListStyle}>
               <Typography sx={TituloSecaoStyle}>
                 Seção 8 - Escolha da Turma
@@ -853,7 +853,7 @@ export default function CadastrarAlunoPage() {
                 </Grid>
               </Grid>
             </List>
-            </Box>
+            
 
             {/* BOTÃO DE SUBMIT */}
             <Box textAlign="center" marginTop={3}>
