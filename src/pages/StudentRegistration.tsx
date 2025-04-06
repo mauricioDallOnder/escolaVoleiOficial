@@ -640,18 +640,13 @@ export default function CadastrarAlunoPage() {
                 Seção 5 - Informações de Saúde
               </Typography>
               <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Possui Alergia?</InputLabel>
-                    <Select
-                      label="Possui Alergia?"
-                      defaultValue="Não"
-                      {...register("aluno.informacoesAdicionais.Possui_alergia")}
-                    >
-                      <MenuItem value="Não">Não</MenuItem>
-                      <MenuItem value="Sim">Sim</MenuItem>
-                    </Select>
-                  </FormControl>
+              <Grid item xs={12} md={6}>
+                  <TextField
+                    label="Possui alergias? Quais?"
+                    variant="outlined"
+                    fullWidth
+                    {...register("aluno.informacoesAdicionais.Possui_alergia")}
+                  />
                 </Grid>
                 <Grid item xs={12} md={6}>
                   <TextField
@@ -663,7 +658,7 @@ export default function CadastrarAlunoPage() {
                 </Grid>
               </Grid>
             </Box>
-
+            
             {/* SEÇÃO: UNIFORME */}
             <Box sx={ListStyle}>
               <Typography sx={TituloSecaoStyle}>
