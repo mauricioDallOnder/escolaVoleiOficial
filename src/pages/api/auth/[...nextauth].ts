@@ -14,7 +14,7 @@ export const authOptions = {
         authorize: async (credentials) => {
           // Implementar a lógica de autenticação aqui
           if (
-            (credentials!.username === "admin" && credentials!.password === "adminpass") ||
+            (credentials!.username === "admin" && credentials!.password === "admin") ||
             (credentials!.username === "professor" && credentials!.password === "professor2025")
           ) {
             return {
