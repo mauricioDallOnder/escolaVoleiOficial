@@ -1,15 +1,24 @@
-'use client';
-import React, { useCallback, useContext, useEffect, useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { Autocomplete, Button, TextField, Typography, Box, Container } from '@mui/material';
+"use client";
+import React, { useCallback, useContext, useEffect, useState } from "react";
+import { useForm, Controller } from "react-hook-form";
+import {
+  Autocomplete,
+  Button,
+  TextField,
+  Typography,
+  Box,
+  Container,
+  Snackbar,
+  Alert,
+} from "@mui/material";
+import { v4 as uuidv4 } from "uuid";
 import { DataContext } from "@/context/context";
 import { ArchiveAluno } from "@/interface/interfaces";
-import Layout from '@/components/TopBarComponents/Layout';
-import { BoxStyleCadastro } from '@/utils/Styles';
-import axios from 'axios';
-import { HeaderForm } from '@/components/HeaderDefaultForm';
-import { v4 as uuidv4 } from 'uuid';
-import { CorrigirDadosDefinitivos } from '@/utils/CorrigirDadosTurmasEmComponetes';
+import Layout from "@/components/TopBarComponents/Layout";
+import { BoxStyleCadastro } from "@/utils/Styles";
+import axios from "axios";
+import { HeaderForm } from "@/components/HeaderDefaultForm";
+import { CorrigirDadosDefinitivos } from "@/utils/CorrigirDadosTurmasEmComponetes";
 
 export default function ArquivarAlunos() {
   const { deleteStudentFromApi, modalidades, fetchModalidades } = useContext(DataContext);
@@ -18,7 +27,9 @@ export default function ArquivarAlunos() {
   const [alunosOptions, setAlunosOptions] = useState<ArchiveAluno[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Carrega as modalidades ao montar o componente
   useEffect(() => {
     if (!dataLoaded) {
       fetchModalidades()
@@ -29,6 +40,7 @@ export default function ArquivarAlunos() {
     }
   }, [dataLoaded, fetchModalidades]);
 
+  // Extrai alunos das modalidades
   useEffect(() => {
     if (modalidades.length > 0 && dataLoaded) {
       const alunosExtraidos = modalidades
@@ -41,7 +53,7 @@ export default function ArquivarAlunos() {
               if (!Array.isArray(turma.alunos)) return [];
               return turma.alunos
                 .filter(Boolean)
-                .map(aluno => {
+                .map((aluno) => {
                   let identificadorUnico = aluno.informacoesAdicionais?.IdentificadorUnico;
                   if (!identificadorUnico) {
                     identificadorUnico = uuidv4();
@@ -52,12 +64,12 @@ export default function ArquivarAlunos() {
                   }
                   return {
                     ...aluno,
+                    // Usamos 'alunoId' para operações futuras; se não existir, definimos igual ao IdentificadorUnico.
                     alunoId: identificadorUnico,
                     nome: aluno.nome ?? "",
                     anoNascimento: aluno.anoNascimento ?? "",
                     telefoneComWhatsapp: aluno.telefoneComWhatsapp ?? "",
                     informacoesAdicionais: aluno.informacoesAdicionais ?? {},
-                    // Define modalidade fixa
                     modalidade: "volei",
                     nomeDaTurma: turma.nome_da_turma,
                     dataMatricula: aluno.dataMatricula ?? "",
@@ -67,56 +79,84 @@ export default function ArquivarAlunos() {
                 });
             });
         });
-
       setAlunosOptions(alunosExtraidos);
     }
   }, [modalidades, dataLoaded]);
 
+  // Função para gerar o conteúdo TXT sem as presenças
+  function gerarConteudoTxt(aluno: ArchiveAluno): string {
+    let conteudo = `--- Dados do Aluno Arquivado ---\n`;
+    conteudo += `ID / alunoId: ${aluno.alunoId}\n`;
+    conteudo += `Nome: ${aluno.nome}\n`;
+    conteudo += `Ano de Nascimento: ${aluno.anoNascimento}\n`;
+    conteudo += `Telefone: ${aluno.telefoneComWhatsapp}\n`;
+    conteudo += `Turma: ${aluno.nomeDaTurma}\n`;
+    conteudo += `Data de Matrícula: ${aluno.dataMatricula}\n`;
+    conteudo += `Foto: ${aluno.foto}\n\n`;
+    conteudo += `--- Informações Adicionais ---\n`;
+    for (const key in aluno.informacoesAdicionais) {
+      Object.entries(aluno.informacoesAdicionais).forEach(([key, value]) => {
+        conteudo += `${key}: ${value}\n`;
+      });
+      
+    }
+    // A parte de presenças foi removida.
+    return conteudo;
+  }
+
+  // Função para criar e baixar arquivo TXT
+  function downloadTxtFile(conteudo: string, nomeArquivo: string) {
+    const blob = new Blob([conteudo], { type: "text/plain;charset=utf-8" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = nomeArquivo;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }
+
+  // Envio do formulário para arquivar o aluno
   const onSubmit = useCallback(async () => {
     if (!selectedAluno) {
       alert("Selecione um aluno para arquivar.");
       return;
     }
 
-    // Verifica se os dados necessários estão presentes
     if (!selectedAluno.IdentificadorUnico || !selectedAluno.nomeDaTurma) {
       alert("Dados do aluno incompletos. Não é possível arquivar.");
-      console.log('IdentificadorUnico:', selectedAluno.IdentificadorUnico);
-      console.log('Nome da Turma:', selectedAluno.nomeDaTurma);
       return;
     }
 
     setIsDeleting(true);
     try {
-      // Envia os dados do aluno para serem salvos na planilha do Google Sheets
-      const response = await axios.post('/api/ArquivarAlunos', selectedAluno);
-      const data = response.data;
-      if (data.status === 'Success') {
-        try {
-          // Remove o aluno do banco de dados via API do Next.js
-          await deleteStudentFromApi({
-            alunoId: selectedAluno.IdentificadorUnico as string,
-            nomeDaTurma: selectedAluno.nomeDaTurma,
-          });
-        } catch (error) {
-          console.error('Erro ao remover aluno:', error);
-          console.log(selectedAluno.IdentificadorUnico);
-          console.log(selectedAluno.nomeDaTurma);
-        }
+      // Gerar e baixar arquivo TXT com os dados do aluno (sem presenças)
+      const conteudoTxt = gerarConteudoTxt(selectedAluno);
+      const nomeArquivo = `${selectedAluno.nome.replace(/\s+/g, "_")}_arquivado.txt`;
+      downloadTxtFile(conteudoTxt, nomeArquivo);
 
-        try {
-          // Corrige os dados das turmas após a remoção do aluno
-          await CorrigirDadosDefinitivos();
-        } catch (error) {
-          console.error('Erro ao corrigir dados da turma:', error);
-        }
+      // Remove o aluno do banco de dados via API
+      await deleteStudentFromApi({
+        alunoId: selectedAluno.IdentificadorUnico as string,
+        nomeDaTurma: selectedAluno.nomeDaTurma,
+      });
 
-        // Atualiza a lista de alunos disponíveis para arquivamento
-        setAlunosOptions(prev => prev.filter(aluno => aluno.IdentificadorUnico !== selectedAluno.IdentificadorUnico));
-        alert("Aluno arquivado com sucesso.");
-      } else {
-        throw new Error('Falha ao arquivar o aluno');
+      // Corrige os dados da turma, se necessário
+      try {
+        await CorrigirDadosDefinitivos();
+      } catch (error) {
+        console.error("Erro ao corrigir dados da turma:", error);
       }
+
+      // Atualiza a lista de alunos disponíveis removendo o arquivado
+      setAlunosOptions((prev) =>
+        prev.filter(
+          (aluno) =>
+            aluno.IdentificadorUnico !== selectedAluno.IdentificadorUnico
+        )
+      );
+      alert("Aluno arquivado com sucesso.");
     } catch (error: any) {
       console.error(error);
       alert(`Ocorreu um erro ao arquivar o aluno: ${error.message}`);
@@ -132,8 +172,7 @@ export default function ArquivarAlunos() {
         <Box component="form" sx={BoxStyleCadastro} onSubmit={handleSubmit(onSubmit)} noValidate>
           <HeaderForm titulo={"Arquivar Alunos"} />
           <Typography sx={{ color: "black", fontWeight: "bold" }}>
-            Ao arquivar os alunos, eles serão deletados do banco de dados, mas os seus dados serão salvos em uma planilha do Google que pode ser acessada por esse link:<br />
-            <a href="https://docs.google.com/spreadsheets/d/1aU7YxMBR1H_zymZRJ_E3GgHmnoa4qTo0JD32IuCVybQ/edit?gid=1204958119#gid=1204958119">Acessar Planilha de Alunos Arquivados</a>
+            Ao arquivar um aluno,ele será deletado do banco de dados e um arquivo de texto será baixado com todos os dados dele.
           </Typography>
           <br />
           <Controller
@@ -145,18 +184,30 @@ export default function ArquivarAlunos() {
                 value={selectedAluno}
                 options={alunosOptions}
                 getOptionLabel={(option) => `${option.nome} - ${option.nomeDaTurma}`}
-                onChange={(_, value) => setSelectedAluno(value)}
-                renderInput={(params) => <TextField {...params} label="Selecione o Aluno" variant="outlined" fullWidth />}
-                isOptionEqualToValue={(option, value) => option.alunoId === value?.alunoId}
+                onChange={(_event, value) => setSelectedAluno(value)}
+                renderInput={(params) => (
+                  <TextField {...params} label="Selecione o Aluno" variant="outlined" fullWidth />
+                )}
+                isOptionEqualToValue={(option, value) =>
+                  option.alunoId === value?.alunoId
+                }
                 filterSelectedOptions
                 autoComplete
                 autoHighlight
               />
             )}
           />
-
-          <Button type="submit" fullWidth variant="contained" color="primary" sx={{ mt: 3, mb: 2 }} disabled={isDeleting}>
-            {isDeleting ? "Arquivando estudante e atualizando turmas... aguarde..." : "Arquivar Aluno"}
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            color="primary"
+            sx={{ mt: 3, mb: 2 }}
+            disabled={isDeleting}
+          >
+            {isDeleting
+              ? "Arquivando aluno... aguarde..."
+              : "Arquivar Aluno"}
           </Button>
         </Box>
       </Container>
