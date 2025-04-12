@@ -16,6 +16,7 @@ import {
   Snackbar,
   Alert,
   SelectChangeEvent,
+  Autocomplete,
 } from "@mui/material";
 import axios from "axios";
 
@@ -46,26 +47,32 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
+/**
+ * Componente principal para criar / atualizar / excluir turmas,
+ * com a categoria livre (mas com sugestões).
+ * Ao final, forçamos underscores e uppercase (dos dias) no front,
+ * e também repetimos a higiene no back-end.
+ */
 export default function ManageTurmas() {
   // Pega a função do contexto que busca modalidades
   const { fetchModalidades } = useData();
 
-  // Aba selecionada: 0=criar, 1=atualizar, 2=excluir
+  // Controle de abas
   const [tabIndex, setTabIndex] = useState(0);
 
-  // Lista de modalidades e lista de turmas
+  // Lista de modalidades e turmas
   const [modalidades, setModalidades] = useState<Modalidade[]>([]);
   const [turmas, setTurmas] = useState<Turma[]>([]);
 
-  // Turma selecionada (para atualizar ou excluir)
+  // Turma selecionada (para atualizar/excluir)
   const [selectedTurma, setSelectedTurma] = useState<Turma | undefined>(
     undefined
   );
 
-  // Formulário para criar/editar turma
+  // Formulário de criação/edição
   const [formValues, setFormValues] = useState<{
     categoria: string;
-    diaDaSemana: string[]; // array de strings
+    diaDaSemana: string[];
     horario: string;
     capacidade_maxima_da_turma: number;
   }>({
@@ -75,13 +82,16 @@ export default function ManageTurmas() {
     capacidade_maxima_da_turma: 1,
   });
 
-  const [nomeTurma, setNomeTurma] = useState(""); // nome da turma final
+  // Nome final da turma (meramente para exibir)
+  const [nomeTurma, setNomeTurma] = useState("");
+  // Loading e mensagem de sucesso
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  // Verificar se capacidade é inválida
   const [capacidadeInvalida, setCapacidadeInvalida] = useState(false);
 
-  // Categorias disponíveis
-  const categorias = [
+  // SUGESTÕES de categorias
+  const categoriasSugeridas = [
     "Infanto Imigrante",
     "Mirim Imigrante",
     "Mini",
@@ -106,52 +116,38 @@ export default function ManageTurmas() {
     "DOMINGO",
   ];
 
-  // --------------------------------------------------------------------------
-  // 1) Buscar modalidades do back-end (fetchModalidades) ao montar o componente
-  // --------------------------------------------------------------------------
+  // Carrega as modalidades do back-end, filtrando "volei"
   useEffect(() => {
-    fetchModalidades("volei").then((data) => {
-      // Filtrar modalidades "arquivados" ou "excluidos"
-      const validModalidades = data.filter(
-        (mod) => mod.nome !== "arquivados" && mod.nome !== "excluidos"
-      );
-      setModalidades(validModalidades);
+    fetchModalidades().then((data) => {
+      const volei = data.find((mod) => mod.nome.toLowerCase() === "volei");
+      if (volei) {
+        setModalidades([volei]);
+      } else {
+        setModalidades([]);
+      }
     });
   }, [fetchModalidades]);
 
-  // --------------------------------------------------------------------------
-  // 2) Assim que temos "modalidades", pegamos as turmas (por ex., "volei" em [0])
-  // --------------------------------------------------------------------------
+  // Depois que temos "modalidades", extraímos as turmas (supondo uma só, "volei")
   useEffect(() => {
-    // Se não houver nada em modalidades, não faz nada
     if (modalidades.length === 0) {
       setTurmas([]);
       return;
     }
-
-    // Pega a primeira (ou a que você preferir)
-    const primeiraModalidade = modalidades[0];
-
-    // Se "primeiraModalidade" ou "primeiraModalidade.turmas" não existir, evita erro
-    if (!primeiraModalidade || !primeiraModalidade.turmas) {
+    const voleiModalidade = modalidades[0];
+    if (!voleiModalidade.turmas) {
       setTurmas([]);
       return;
     }
 
-    const turmaData = primeiraModalidade.turmas;
-
-    // Se for array, mantemos como está; se for objeto, convertemos
-    if (Array.isArray(turmaData)) {
-      setTurmas(turmaData);
+    if (Array.isArray(voleiModalidade.turmas)) {
+      setTurmas(voleiModalidade.turmas);
     } else {
-      // Converte para array de Turma
-      setTurmas(Object.values(turmaData) as Turma[]);
+      setTurmas(Object.values(voleiModalidade.turmas) as Turma[]);
     }
   }, [modalidades]);
 
-  // --------------------------------------------------------------------------
-  // 3) Se há uma turma selecionada, verifica se a capacidade é válida
-  // --------------------------------------------------------------------------
+  // Se já tem turma selecionada e o form "capacidade" mudar
   useEffect(() => {
     if (selectedTurma) {
       const invalido =
@@ -161,22 +157,24 @@ export default function ManageTurmas() {
     }
   }, [formValues.capacidade_maxima_da_turma, selectedTurma]);
 
-  // --------------------------------------------------------------------------
-  // 4) Toda vez que "formValues" muda, recalculamos "nome_da_turma"
-  // --------------------------------------------------------------------------
+  // Recalcula "nomeTurma" toda vez que formValues mudar
   useEffect(() => {
     updateNomeTurma(formValues);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formValues]);
 
-  // --------------------------------------------------------------------------
-  // Funções Auxiliares
-  // --------------------------------------------------------------------------
-  function handleTabChange(event: React.SyntheticEvent, newValue: number) {
+  // Troca de aba
+  function handleTabChange(_event: React.SyntheticEvent, newValue: number) {
     setTabIndex(newValue);
   }
 
-  // Para inputs simples (categoria, horario, capacidade)
+  // Campo "diaDaSemana" multiple
+  function handleDiaDaSemanaChange(event: SelectChangeEvent<string[]>) {
+    const valor = event.target.value as string[];
+    setFormValues((prev) => ({ ...prev, diaDaSemana: valor }));
+  }
+
+  // Campo "capacidade", "horario" etc.
   function handleInputChange(e: ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target;
     const newValues = {
@@ -186,87 +184,88 @@ export default function ManageTurmas() {
     setFormValues(newValues);
   }
 
-  // Ao selecionar uma turma no combo (atualizar/excluir)
-  function handleTurmaSelectChange(event: SelectChangeEvent<string>) {
-    const turmaUuid = event.target.value;
-    const turmaEncontrada = turmas.find((t) => t.uuidTurma === turmaUuid);
-
-    if (turmaEncontrada) {
-      setSelectedTurma(turmaEncontrada);
-
-      // Monta o array de dias da semana
-      let daysArray: string[] = [];
-      if (Array.isArray(turmaEncontrada.diaDaSemana)) {
-        daysArray = turmaEncontrada.diaDaSemana;
-      } else if (typeof turmaEncontrada.diaDaSemana === "string") {
-        // fallback se só tiver "diaDaSemana"
-        daysArray = [turmaEncontrada.diaDaSemana];
-      }
-
-      // Preenche o form
-      const values = {
-        categoria: turmaEncontrada.categoria || "",
-        diaDaSemana: daysArray,
-        horario: turmaEncontrada.horario || "",
-        capacidade_maxima_da_turma:
-          turmaEncontrada.capacidade_maxima_da_turma || 1,
-      };
-
-      setFormValues(values);
-      setNomeTurma(turmaEncontrada.nome_da_turma || "");
-    } else {
-      setSelectedTurma(undefined);
-    }
-  }
-
-  // Para múltiplos dias da semana
-  function handlediaDaSemanaChange(event: SelectChangeEvent<string[]>) {
-    const valor = event.target.value as string[];
-    setFormValues((prev) => ({ ...prev, diaDaSemana: valor }));
-  }
-
-  // Monta o nome da turma
+  // Monta nome final para exibição local
   function updateNomeTurma(values: typeof formValues) {
     const { categoria, diaDaSemana, horario } = values;
-    const novoNomeTurma = `${categoria}_${diaDaSemana.join("_")}_${horario}`;
-    setNomeTurma(novoNomeTurma);
+    // Forçamos underscores e uppercase para dias
+    const cat = categoria.replace(/\s+/g, "_");
+    const dias = diaDaSemana.map((d) => d.replace(/\s+/g, "_").toUpperCase());
+    const hora = horario.replace(/\s+/g, "_");
+    const finalNome = `${cat}_${dias.join("_")}_${hora}`;
+    setNomeTurma(finalNome);
   }
 
-  // Submit (criar/atualizar)
+  // Ao selecionar turma no combo
+  function handleTurmaSelectChange(event: SelectChangeEvent<string>) {
+    const turmaUuid = event.target.value;
+    const foundTurma = turmas.find((t) => t.uuidTurma === turmaUuid);
+    if (!foundTurma) {
+      setSelectedTurma(undefined);
+      return;
+    }
+
+    setSelectedTurma(foundTurma);
+    // Montar array de dias
+    let daysArray: string[] = [];
+    if (Array.isArray(foundTurma.diaDaSemana)) {
+      daysArray = foundTurma.diaDaSemana;
+    } else if (typeof foundTurma.diaDaSemana === "string") {
+      daysArray = [foundTurma.diaDaSemana];
+    }
+
+    // Preenche form
+    setFormValues({
+      categoria: foundTurma.categoria || "",
+      diaDaSemana: daysArray,
+      horario: foundTurma.horario || "",
+      capacidade_maxima_da_turma: foundTurma.capacidade_maxima_da_turma || 1,
+    });
+    setNomeTurma(foundTurma.nome_da_turma || "");
+  }
+
+  // Submeter create/update
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
     setSuccessMessage("");
 
     try {
-      if (selectedTurma) {
-        // Atualizar
+      // Forçamos novamente no front-end (apesar de no back tbm fazermos)
+      const cat = formValues.categoria.replace(/\s+/g, "_");
+      const dias = formValues.diaDaSemana.map((d) =>
+        d.replace(/\s+/g, "_").toUpperCase()
+      );
+      const hora = formValues.horario.replace(/\s+/g, "_");
+
+      const finalNome = `${cat}_${dias.join("_")}_${hora}`;
+
+      if (selectedTurma && tabIndex === 1) {
+        // UPDATE
         await axios.put("/api/HandleNewTurmas", {
           uuidTurma: selectedTurma.uuidTurma,
-          nome_da_turma: nomeTurma,
+          nome_da_turma: finalNome, // passamos nome final
           capacidade_maxima_da_turma: formValues.capacidade_maxima_da_turma,
-          categoria: formValues.categoria,
-          diaDaSemana: formValues.diaDaSemana,
+          categoria: cat,
+          diaDaSemana: formValues.diaDaSemana, // array de dias sem underscore
           horario: formValues.horario,
           modalidade: "volei",
         });
         setSuccessMessage("Turma atualizada com sucesso!");
-      } else {
-        // Criar
+      } else if (tabIndex === 0) {
+        // CREATE
         await axios.post("/api/HandleNewTurmas", {
-          categoria: formValues.categoria,
-          diaDaSemana: formValues.diaDaSemana,
-          horario: formValues.horario,
+          categoria: cat,
+          diaDaSemana: dias, // passamos array já uppercase e underscores
+          horario: hora,
           capacidade_maxima_da_turma: formValues.capacidade_maxima_da_turma,
         });
         setSuccessMessage("Turma criada com sucesso!");
       }
     } catch (error) {
       console.error("Erro ao criar/atualizar turma:", error);
+      alert("Falha ao criar/atualizar turma. Ver console para detalhes.");
     } finally {
       setLoading(false);
-
-      // Reseta tudo
       setFormValues({
         categoria: "",
         diaDaSemana: [],
@@ -278,7 +277,7 @@ export default function ManageTurmas() {
     }
   }
 
-  // Excluir Turma
+  // Excluir
   async function handleDelete() {
     if (!selectedTurma) return;
     setLoading(true);
@@ -292,13 +291,13 @@ export default function ManageTurmas() {
         },
       });
       setSuccessMessage("Turma excluída com sucesso!");
-
-      // Remove do array local
+      // Remove local
       setTurmas((prev) =>
         prev.filter((t) => t.uuidTurma !== selectedTurma.uuidTurma)
       );
     } catch (error) {
       console.error("Erro ao deletar turma:", error);
+      alert("Falha ao deletar turma. Ver console.");
     } finally {
       setLoading(false);
       setFormValues({
@@ -312,7 +311,6 @@ export default function ManageTurmas() {
     }
   }
 
-  // Render
   return (
     <Layout>
       <Container
@@ -324,10 +322,7 @@ export default function ManageTurmas() {
         }}
       >
         <Box sx={BoxStyleCadastro}>
-          <AppBar
-            position="static"
-            sx={{ backgroundColor: "#2e3b55", mt: "10px" }}
-          >
+          <AppBar position="static" sx={{ backgroundColor: "#2e3b55", mt: "10px" }}>
             <Tabs
               value={tabIndex}
               onChange={handleTabChange}
@@ -341,36 +336,31 @@ export default function ManageTurmas() {
             </Tabs>
           </AppBar>
 
-          {/* Aba 0: Criar Turma */}
+          {/* Aba 0 - Criar Turma */}
           <TabPanel value={tabIndex} index={0}>
             <form onSubmit={handleSubmit}>
-              <FormControl fullWidth margin="normal" required>
-                <InputLabel>Categoria</InputLabel>
-                <Select
-                  name="categoria"
-                  value={formValues.categoria}
-                  onChange={(e) =>
-                    setFormValues((prev) => ({
-                      ...prev,
-                      categoria: e.target.value as string,
-                    }))
-                  }
-                >
-                  {categorias.map((cat) => (
-                    <MenuItem key={cat} value={cat}>
-                      {cat}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Typography variant="subtitle1" sx={{ mt: 2 }}>
+                Categoria (livre, sugerida, mas não obrigatória)
+              </Typography>
+              <Autocomplete
+                freeSolo
+                options={categoriasSugeridas}
+                value={formValues.categoria}
+                onInputChange={(event, newVal) => {
+                  setFormValues((prev) => ({ ...prev, categoria: newVal }));
+                }}
+                renderInput={(params) => (
+                  <TextField {...params} label="Categoria" fullWidth />
+                )}
+              />
 
-              <FormControl fullWidth margin="normal" required>
+              <FormControl fullWidth margin="normal" required sx={{ mt: 2 }}>
                 <InputLabel>Dias da Semana</InputLabel>
                 <Select
                   multiple
                   name="diaDaSemana"
                   value={formValues.diaDaSemana}
-                  onChange={handlediaDaSemanaChange}
+                  onChange={handleDiaDaSemanaChange}
                   renderValue={(selected) => (selected as string[]).join(", ")}
                 >
                   {diasSemanaPossiveis.map((dia) => (
@@ -402,16 +392,8 @@ export default function ManageTurmas() {
                 margin="normal"
               />
 
-              {/* Caso queira exibir alguma validação de capacidade */}
-              {capacidadeInvalida && selectedTurma && (
-                <Typography color="error" variant="body2">
-                  A capacidade máxima não pode ser menor que o número atual de
-                  alunos ({selectedTurma.capacidade_atual_da_turma}).
-                </Typography>
-              )}
-
               <TextField
-                label="Nome da Turma"
+                label="Nome da Turma (preview)"
                 value={nomeTurma}
                 fullWidth
                 margin="normal"
@@ -422,19 +404,19 @@ export default function ManageTurmas() {
                 type="submit"
                 variant="contained"
                 color="primary"
-                disabled={loading || capacidadeInvalida}
+                disabled={loading}
               >
                 Criar Turma
               </Button>
             </form>
           </TabPanel>
 
-          {/* Aba 1: Atualizar Turma */}
+          {/* Aba 1 - Atualizar Turma */}
           <TabPanel value={tabIndex} index={1}>
             <FormControl fullWidth margin="normal" required>
-              <InputLabel>Turma</InputLabel>
+              <InputLabel>Selecione a Turma (Atualizar)</InputLabel>
               <Select
-                value={selectedTurma ? selectedTurma.uuidTurma : ""}
+                value={selectedTurma?.uuidTurma || ""}
                 onChange={handleTurmaSelectChange}
               >
                 {turmas.map((turma) => (
@@ -447,36 +429,29 @@ export default function ManageTurmas() {
 
             {selectedTurma && (
               <form onSubmit={handleSubmit}>
-                <FormControl fullWidth margin="normal" required>
-                  <InputLabel>Categoria</InputLabel>
-                  <Select
-                    name="categoria"
-                    value={formValues.categoria}
-                    onChange={(e) =>
-                      setFormValues((prev) => ({
-                        ...prev,
-                        categoria: e.target.value as string,
-                      }))
-                    }
-                  >
-                    {categorias.map((cat) => (
-                      <MenuItem key={cat} value={cat}>
-                        {cat}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <Typography variant="subtitle1" sx={{ mt: 2 }}>
+                  Categoria (livre, sugerida, mas não obrigatória)
+                </Typography>
+                <Autocomplete
+                  freeSolo
+                  options={categoriasSugeridas}
+                  value={formValues.categoria}
+                  onInputChange={(event, newVal) => {
+                    setFormValues((prev) => ({ ...prev, categoria: newVal }));
+                  }}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Categoria" fullWidth />
+                  )}
+                />
 
-                <FormControl fullWidth margin="normal" required>
+                <FormControl fullWidth margin="normal" required sx={{ mt: 2 }}>
                   <InputLabel>Dias da Semana</InputLabel>
                   <Select
                     multiple
                     name="diaDaSemana"
                     value={formValues.diaDaSemana}
-                    onChange={handlediaDaSemanaChange}
-                    renderValue={(selected) =>
-                      (selected as string[]).join(", ")
-                    }
+                    onChange={handleDiaDaSemanaChange}
+                    renderValue={(selected) => (selected as string[]).join(", ")}
                   >
                     {diasSemanaPossiveis.map((dia) => (
                       <MenuItem key={dia} value={dia}>
@@ -508,13 +483,13 @@ export default function ManageTurmas() {
                 />
                 {capacidadeInvalida && (
                   <Typography color="error" variant="body2">
-                    A capacidade máxima não pode ser menor que o número atual de
-                    alunos ({selectedTurma.capacidade_atual_da_turma}).
+                    A capacidade máxima não pode ser menor que o número atual de alunos (
+                    {selectedTurma.capacidade_atual_da_turma}).
                   </Typography>
                 )}
 
                 <TextField
-                  label="Nome da Turma"
+                  label="Nome da Turma (preview)"
                   value={nomeTurma}
                   fullWidth
                   margin="normal"
@@ -533,12 +508,12 @@ export default function ManageTurmas() {
             )}
           </TabPanel>
 
-          {/* Aba 2: Excluir Turma */}
+          {/* Aba 2 - Excluir Turma */}
           <TabPanel value={tabIndex} index={2}>
             <FormControl fullWidth margin="normal" required>
-              <InputLabel>Turma</InputLabel>
+              <InputLabel>Selecione a Turma (Excluir)</InputLabel>
               <Select
-                value={selectedTurma ? selectedTurma.uuidTurma : ""}
+                value={selectedTurma?.uuidTurma || ""}
                 onChange={handleTurmaSelectChange}
               >
                 {turmas.map((turma) => (
