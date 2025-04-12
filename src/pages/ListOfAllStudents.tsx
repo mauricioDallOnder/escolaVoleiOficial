@@ -404,7 +404,7 @@ export default function StudantTableGeral() {
     {
       field: "modalidade_turma",
       headerName: "Turma",
-      width: 200,
+      width: 350,
       cellClassName: "cell-wrap",
     },
     {
