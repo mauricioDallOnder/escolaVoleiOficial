@@ -130,7 +130,6 @@ export default function StudentUpdatePersonalInformation() {
     setValue("nome", value.nome || "");
     setValue("foto", value.foto || "");
     setValue("anoNascimento", value.anoNascimento || "");
-    setValue("telefoneComWhatsapp", value.telefoneComWhatsapp ? value.telefoneComWhatsapp.toString() : "");
     setValue("documento", value.documento || "");
 
     // Se não houver informacoesAdicionais, inicializa com valores padrão (mas sem gerar identificador)
@@ -224,13 +223,15 @@ export default function StudentUpdatePersonalInformation() {
         foto: finalPhotoUrl || data.foto,
         identificadorUnico: identificador,
       };
+
+      
       await updateDataInApi(payload);
       setSuccessMessage("Aluno atualizado com sucesso!");
       reset();
       setSelectedFile(null);
       setPhotoURL(null);
       
-      router.reload();
+      //router.reload();
     } catch (error) {
       console.error("Erro ao enviar os dados do formulário:", error);
       alert("Falha ao atualizar dados do aluno.");

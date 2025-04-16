@@ -165,6 +165,7 @@ const DataProvider: React.FC<ChildrenProps> = ({ children }) => {
     const payload = {
       identificadorUnico: identificador,
       novosDados: {
+        documento: data.documento,
         anoNascimento: data.anoNascimento,
         telefoneComWhatsapp: data.telefoneComWhatsapp,
         nome: data.nome,
