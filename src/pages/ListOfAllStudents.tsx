@@ -191,7 +191,7 @@ export default function StudantTableGeral() {
         nome: normalizeText(aluno.nome),
         anoNascimento: normalizeText(aluno.anoNascimento),
         dataMatricula: normalizeText(aluno.dataMatricula),
-        telefoneComWhatsapp: normalizeText(aluno.telefoneComWhatsapp),
+       // telefoneComWhatsapp: normalizeText(aluno.telefoneComWhatsapp),
 
         // Campos em informacoesAdicionais
         Nome__do_responsavel: normalizeText(info.Nome__do_responsavel),
@@ -280,13 +280,6 @@ export default function StudantTableGeral() {
     {
       field: "dataMatricula",
       headerName: "Data Matrícula",
-      width: 130,
-      cellClassName: "cell-wrap",
-    },
-    // Telefone do Aluno (WhatsApp)
-    {
-      field: "telefoneComWhatsapp",
-      headerName: "Tel. (Aluno)",
       width: 130,
       cellClassName: "cell-wrap",
     },

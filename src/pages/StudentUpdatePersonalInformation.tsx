@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useContext, useEffect, useState } from "react";
+// src/components/StudentUpdatePersonalInformation.tsx
+"use client";
+import React, { useContext, useEffect, useState, ChangeEvent } from "react";
 import {
   Autocomplete,
   TextField,
@@ -10,70 +10,49 @@ import {
   Grid,
   List,
   Typography,
-  Paper,
   Snackbar,
   Alert,
 } from "@mui/material";
-import { v4 as uuidv4 } from "uuid";
-import { useForm, SubmitHandler, Controller } from "react-hook-form";
+import { useForm, SubmitHandler } from "react-hook-form";
 import { DataContext } from "@/context/context";
 import { IIAlunoUpdate } from "@/interface/interfaces";
 import { HeaderForm } from "@/components/HeaderDefaultForm";
 import Layout from "@/components/TopBarComponents/Layout";
-import {
-  BoxStyleCadastro,
-  ListStyle,
-  TituloSecaoStyle,
-} from "@/utils/Styles";
+import { BoxStyleCadastro, ListStyle, TituloSecaoStyle } from "@/utils/Styles";
 import axios from "axios";
 import { GetServerSideProps } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "./api/auth/[...nextauth]";
-
-// Import de Firebase storage (caso use)
 import { storage } from "../config/firestoreConfig";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-
-// Exemplo de interface com a nova estrutura
-// "endereco", "numero_endereço", "complemento", "bairro", "cep", etc.
-interface StudentUpdateProps {
-  handleCloseModal?: () => void; // Se precisar
-}
+import resizeImage from "@/utils/Constants";
+import { useRouter } from "next/router";
 
 export default function StudentUpdatePersonalInformation() {
-  // Busca do contexto as funções de update e fetch
   const { updateDataInApi, modalidades, fetchModalidades } = useContext(DataContext);
+  const router = useRouter();
 
-  // Estado do aluno selecionado no autocomplete
   const [selectedAluno, setSelectedAluno] = useState<IIAlunoUpdate | null>(null);
-
-  // Lista de alunos disponíveis para autocomplete
   const [alunosOptions, setAlunosOptions] = useState<IIAlunoUpdate[]>([]);
-
-  // Para upload de foto
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [photoURL, setPhotoURL] = useState<string | null>(null);
-
-  // Para feedback ao usuário
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // React Hook Form
   const {
     register,
     handleSubmit,
     setValue,
     reset,
-    control,
     formState: { isSubmitting },
   } = useForm<IIAlunoUpdate>();
 
-  // Carrega modalidades ao montar
+  // Carrega as modalidades na montagem
   useEffect(() => {
     fetchModalidades().catch(console.error);
   }, [fetchModalidades]);
 
-  // Quando `modalidades` mudar, construímos a lista de alunos
+  // Constrói a lista de alunos para o Autocomplete
   useEffect(() => {
     const alunosTemp: IIAlunoUpdate[] = [];
     modalidades.forEach((modalidade) => {
@@ -82,10 +61,8 @@ export default function StudentUpdatePersonalInformation() {
           ? turma.alunos.filter(Boolean)
           : [];
         alunosArray.forEach((aluno) => {
-          // Monta um IIAlunoUpdate com os dados que você precisa
           alunosTemp.push({
             ...aluno,
-            // Se precisar: nomeDaTurma e modalidade
             nomeDaTurma: turma.nome_da_turma,
             modalidade: modalidade.nome,
           });
@@ -95,29 +72,32 @@ export default function StudentUpdatePersonalInformation() {
     setAlunosOptions(alunosTemp);
   }, [modalidades]);
 
-  // Lida com troca de arquivo (para foto)
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files ? event.target.files[0] : null;
-    setSelectedFile(file);
-    if (file) {
-      const preview = URL.createObjectURL(file);
-      setPhotoURL(preview);
+  // Função para upload de foto
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const arquivoSelecionado = event.target.files && event.target.files[0];
+    if (!arquivoSelecionado) return;
+    try {
+      const resizedImageUrl = await resizeImage(arquivoSelecionado);
+      const blob = await (await fetch(resizedImageUrl)).blob();
+      const novoArquivo = new File([blob], arquivoSelecionado.name, {
+        type: blob.type,
+      });
+      setSelectedFile(novoArquivo);
+      setPhotoURL(resizedImageUrl);
+    } catch (erro) {
+      console.error("Erro ao redimensionar a imagem:", erro);
     }
   };
 
-  // Faz upload e retorna a URL final
   const uploadPhoto = async (): Promise<string | null> => {
     if (!selectedFile) return null;
-
     const storageRef = ref(storage, `${selectedFile.name}`);
     const uploadTask = uploadBytesResumable(storageRef, selectedFile);
-
     return new Promise<string | null>((resolve, reject) => {
       uploadTask.on(
         "state_changed",
         (snapshot) => {
-          const progress =
-            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
           setUploadProgress(progress);
         },
         (error) => {
@@ -131,65 +111,29 @@ export default function StudentUpdatePersonalInformation() {
             resolve(downloadURL);
           } catch (error) {
             console.error("Erro ao obter a URL da foto:", error);
-            resolve(null); // se falhar, retorna null
+            resolve(null);
           }
         }
       );
     });
   };
 
-  // Ao submeter o form
-  const onSubmit: SubmitHandler<IIAlunoUpdate> = async (data) => {
-    try {
-      let finalPhotoUrl = photoURL;
-      if (selectedFile) {
-        finalPhotoUrl = await uploadPhoto();
-      }
-
-      // Monta o "updatedData"
-      const updatedData: IIAlunoUpdate = {
-        ...data,
-        foto: finalPhotoUrl || data.foto, // Se tinha foto antiga e não fez upload
-      };
-
-      // Chamamos a função do contexto para atualizar
-      await updateDataInApi({
-        ...updatedData,
-        alunoId: selectedAluno?.alunoId, 
-      });
-
-      alert("Cadastro atualizado com sucesso!");
-      reset();
-      setSelectedFile(null);
-      setPhotoURL(null);
-      setSuccessMessage("Aluno atualizado com sucesso!");
-    } catch (error) {
-      console.error("Erro ao enviar os dados do formulário:", error);
-      alert("Falha ao atualizar dados do aluno.");
-    }
-  };
-
-  // Ao selecionar um aluno no autocomplete
+  // Quando um aluno é selecionado, preenche o formulário
   const handleAlunoChange = (_event: any, value: IIAlunoUpdate | null) => {
     setSelectedAluno(value);
-
     if (!value) {
-      // Se nenhum aluno, limpa form
       reset();
       setPhotoURL(null);
       return;
     }
-
-    // Preenchemos campos com base no "value"
+    // Preenche os campos do aluno
     setValue("nome", value.nome || "");
     setValue("foto", value.foto || "");
     setValue("anoNascimento", value.anoNascimento || "");
-    setValue(
-      "telefoneComWhatsapp",
-      value.telefoneComWhatsapp ? value.telefoneComWhatsapp.toString() : ""
-    );
+    setValue("telefoneComWhatsapp", value.telefoneComWhatsapp ? value.telefoneComWhatsapp.toString() : "");
+    setValue("documento", value.documento || "");
 
-    // Se não existir "informacoesAdicionais", cria. (Nova estrutura)
+    // Se não houver informacoesAdicionais, inicializa com valores padrão (mas sem gerar identificador)
     if (!value.informacoesAdicionais) {
       value.informacoesAdicionais = {
         IdentificadorUnico: "",
@@ -216,114 +160,81 @@ export default function StudentUpdatePersonalInformation() {
         uniforme: "",
       };
     }
+    // Verifica se o aluno possui o IdentificadorUnico
+    if (!value.informacoesAdicionais.IdentificadorUnico) {
+      alert("O aluno selecionado não possui identificador único. É necessário que o cadastro original gere esse valor. Informe o administrador ou recadastre o aluno.");
+      // Opcional: você pode impedir a seleção ou forçar o cancelamento
+      reset();
+      setPhotoURL(null);
+      setSelectedAluno(null);
+      return;
+    }
+    setValue("informacoesAdicionais.IdentificadorUnico", value.informacoesAdicionais.IdentificadorUnico);
 
-    // Agora preenchemos cada campo da "nova estrutura"
-    setValue(
-      "informacoesAdicionais.endereco",
-      value.informacoesAdicionais.endereco || ""
-    );
-    setValue(
-      "informacoesAdicionais.numero_endereço",
-      value.informacoesAdicionais.numero_endereço || ""
-    );
-    setValue(
-      "informacoesAdicionais.complemento",
-      value.informacoesAdicionais.complemento || ""
-    );
-    setValue(
-      "informacoesAdicionais.bairro",
-      value.informacoesAdicionais.bairro || ""
-    );
-    setValue(
-      "informacoesAdicionais.cep",
-      value.informacoesAdicionais.cep || ""
-    );
-    setValue(
-      "informacoesAdicionais.plano_de_saude",
-      value.informacoesAdicionais.plano_de_saude || ""
-    );
-    setValue(
-      "informacoesAdicionais.Possui_alergia",
-      value.informacoesAdicionais.Possui_alergia || ""
-    );
-    setValue(
-      "informacoesAdicionais.nome_contato_emergencia",
-      value.informacoesAdicionais.nome_contato_emergencia || ""
-    );
-    setValue(
-      "informacoesAdicionais.telefone_contato_emergencia",
-      value.informacoesAdicionais.telefone_contato_emergencia || ""
-    );
-    setValue(
-      "informacoesAdicionais.Nome__do_responsavel",
-      value.informacoesAdicionais.Nome__do_responsavel || ""
-    );
-    setValue(
-      "informacoesAdicionais.data_de_nascimento_responsavel",
-      value.informacoesAdicionais.data_de_nascimento_responsavel || ""
-    );
-    setValue(
-      "informacoesAdicionais.documento_do_responsavel",
-      value.informacoesAdicionais.documento_do_responsavel || ""
-    );
-    setValue(
-      "informacoesAdicionais.email_do_responsavel",
-      value.informacoesAdicionais.email_do_responsavel || ""
-    );
-    setValue(
-      "informacoesAdicionais.endereco",
-      value.informacoesAdicionais.endereco || ""
-    );
-    setValue(
-      "informacoesAdicionais.funcao_do_responsavel",
-      value.informacoesAdicionais.funcao_do_responsavel || ""
-    );
-    setValue(
-      "informacoesAdicionais.hasUniforme",
-      value.informacoesAdicionais.hasUniforme || false
-    );
-    setValue(
-      "informacoesAdicionais.local_de_trabalho_do_responsavel",
-      value.informacoesAdicionais.local_de_trabalho_do_responsavel || ""
-    );
-    setValue(
-      "informacoesAdicionais.nome_contato_emergencia",
-      value.informacoesAdicionais.nome_contato_emergencia || ""
-    );
-    setValue(
-      "informacoesAdicionais.numero_endereço",
-      value.informacoesAdicionais.numero_endereço || ""
-    );
-    setValue(
-      "informacoesAdicionais.plano_de_saude",
-      value.informacoesAdicionais.plano_de_saude || ""
-    );
-    setValue(
-      "informacoesAdicionais.primeiro_telefone_do_responsavel",
-      value.informacoesAdicionais.primeiro_telefone_do_responsavel || ""
-    );
-    setValue(
-      "informacoesAdicionais.segundo_telefone_do_responsavel",
-      value.informacoesAdicionais.segundo_telefone_do_responsavel || ""
-    );
-    setValue(
-      "informacoesAdicionais.telefone_comercial_do_responsavel",
-      value.informacoesAdicionais.telefone_comercial_do_responsavel || ""
-    );
-    setValue(
-      "informacoesAdicionais.telefone_contato_emergencia",
-      value.informacoesAdicionais.telefone_contato_emergencia || ""
-    );
-    setValue(
-      "informacoesAdicionais.uniforme_do_aluno",
-      value.informacoesAdicionais.uniforme_do_aluno || ""
-    );
-    setValue(
-      "informacoesAdicionais.uniforme",
-      value.informacoesAdicionais.uniforme || ""
-    );
+    // Preenche os demais campos de informacoesAdicionais
+    setValue("informacoesAdicionais.endereco", value.informacoesAdicionais.endereco || "");
+    setValue("informacoesAdicionais.numero_endereço", value.informacoesAdicionais.numero_endereço || "");
+    setValue("informacoesAdicionais.complemento", value.informacoesAdicionais.complemento || "");
+    setValue("informacoesAdicionais.bairro", value.informacoesAdicionais.bairro || "");
+    setValue("informacoesAdicionais.cep", value.informacoesAdicionais.cep || "");
+    setValue("informacoesAdicionais.plano_de_saude", value.informacoesAdicionais.plano_de_saude || "");
+    setValue("informacoesAdicionais.Possui_alergia", value.informacoesAdicionais.Possui_alergia || "");
+    setValue("informacoesAdicionais.nome_contato_emergencia", value.informacoesAdicionais.nome_contato_emergencia || "");
+    setValue("informacoesAdicionais.telefone_contato_emergencia", value.informacoesAdicionais.telefone_contato_emergencia || "");
+    setValue("informacoesAdicionais.Nome__do_responsavel", value.informacoesAdicionais.Nome__do_responsavel || "");
+    setValue("informacoesAdicionais.data_de_nascimento_responsavel", value.informacoesAdicionais.data_de_nascimento_responsavel || "");
+    setValue("informacoesAdicionais.documento_do_responsavel", value.informacoesAdicionais.documento_do_responsavel || "");
+    setValue("informacoesAdicionais.email_do_responsavel", value.informacoesAdicionais.email_do_responsavel || "");
+    setValue("informacoesAdicionais.primeiro_telefone_do_responsavel", value.informacoesAdicionais.primeiro_telefone_do_responsavel || "");
+    setValue("informacoesAdicionais.funcao_do_responsavel", value.informacoesAdicionais.funcao_do_responsavel || "");
+    setValue("informacoesAdicionais.hasUniforme", value.informacoesAdicionais.hasUniforme || false);
+    setValue("informacoesAdicionais.local_de_trabalho_do_responsavel", value.informacoesAdicionais.local_de_trabalho_do_responsavel || "");
+    setValue("informacoesAdicionais.nome_contato_emergencia", value.informacoesAdicionais.nome_contato_emergencia || "");
+    setValue("informacoesAdicionais.numero_endereço", value.informacoesAdicionais.numero_endereço || "");
+    setValue("informacoesAdicionais.plano_de_saude", value.informacoesAdicionais.plano_de_saude || "");
+    setValue("informacoesAdicionais.primeiro_telefone_do_responsavel", value.informacoesAdicionais.primeiro_telefone_do_responsavel || "");
+    setValue("informacoesAdicionais.segundo_telefone_do_responsavel", value.informacoesAdicionais.segundo_telefone_do_responsavel || "");
+    setValue("informacoesAdicionais.telefone_comercial_do_responsavel", value.informacoesAdicionais.telefone_comercial_do_responsavel || "");
+    setValue("informacoesAdicionais.telefone_contato_emergencia", value.informacoesAdicionais.telefone_contato_emergencia || "");
+    setValue("informacoesAdicionais.uniforme_do_aluno", value.informacoesAdicionais.uniforme_do_aluno || "");
+    setValue("informacoesAdicionais.uniforme", value.informacoesAdicionais.uniforme || "");
 
     setPhotoURL(value.foto || null);
+  };
+
+
+  const onSubmit: SubmitHandler<IIAlunoUpdate> = async (data) => {
+    try {
+      let finalPhotoUrl = photoURL;
+      if (selectedFile) {
+        finalPhotoUrl = await uploadPhoto();
+      }
+      if (!finalPhotoUrl) {
+        alert("A foto é obrigatória para atualizar o cadastro.");
+        return;
+      }
+      // Obtém o identificador único do aluno a partir de informacoesAdicionais
+      const identificador = data.informacoesAdicionais?.IdentificadorUnico;
+      if (!identificador) {
+        alert("O identificador único do aluno não foi encontrado. Atualize os dados corretamente.");
+        return;
+      }
+      const payload = {
+        ...data,
+        foto: finalPhotoUrl || data.foto,
+        identificadorUnico: identificador,
+      };
+      await updateDataInApi(payload);
+      setSuccessMessage("Aluno atualizado com sucesso!");
+      reset();
+      setSelectedFile(null);
+      setPhotoURL(null);
+      
+      router.reload();
+    } catch (error) {
+      console.error("Erro ao enviar os dados do formulário:", error);
+      alert("Falha ao atualizar dados do aluno.");
+    }
   };
 
   return (
@@ -331,32 +242,34 @@ export default function StudentUpdatePersonalInformation() {
       <Container>
         <form onSubmit={handleSubmit(onSubmit)}>
           <Box sx={BoxStyleCadastro}>
-            {/* Cabeçalho */}
             <HeaderForm titulo={"Atualização de dados do Aluno"} />
-
-            {/* Autocomplete de Alunos */}
+            {/* Autocomplete para pesquisar o aluno pelo nome */}
             <Autocomplete
               options={alunosOptions}
               getOptionLabel={(option) => option.nome || ""}
-              onChange={handleAlunoChange}
+              onChange={(event, value) => handleAlunoChange(event, value)}
+              openOnFocus
+              clearOnEscape={false}
               renderInput={(params) => (
                 <TextField
                   {...params}
-                  label="Nome do Aluno"
+                  label="Pesquise o Aluno pelo Nome"
                   margin="normal"
                   required
                   fullWidth
                 />
               )}
-              // personaliza a forma de renderizar as opções
               renderOption={(props, option) => {
                 const key = `${option.informacoesAdicionais?.IdentificadorUnico}-${option.nomeDaTurma}`;
                 return (
                   <li {...props} key={key}>
-                    {option.nome} – {option.nomeDaTurma}
+                    {option.nome} – {option.nomeDaTurma} ({option.modalidade})
                   </li>
                 );
               }}
+              isOptionEqualToValue={(option, value) =>
+                option.informacoesAdicionais?.IdentificadorUnico === value?.informacoesAdicionais?.IdentificadorUnico
+              }
             />
 
             <List sx={ListStyle}>
@@ -373,24 +286,23 @@ export default function StudentUpdatePersonalInformation() {
                     {...register("nome", { required: true })}
                   />
                 </Grid>
-
                 <Grid item xs={12} sm={6}>
                   <TextField
-                    label="Ano de Nascimento"
+                    label="Data de Nascimento"
                     fullWidth
                     variant="filled"
                     InputLabelProps={{ shrink: true }}
                     {...register("anoNascimento")}
                   />
                 </Grid>
-
+              
                 <Grid item xs={12} sm={6}>
                   <TextField
-                    label="Telefone com WhatsApp"
+                    label="Documento do aluno"
                     fullWidth
                     variant="filled"
                     InputLabelProps={{ shrink: true }}
-                    {...register("telefoneComWhatsapp")}
+                    {...register("documento")}
                   />
                 </Grid>
 
@@ -411,7 +323,7 @@ export default function StudentUpdatePersonalInformation() {
                       {photoURL ? (
                         <img
                           src={photoURL}
-                          alt="Foto"
+                          alt="Foto do Aluno"
                           style={{
                             width: "100%",
                             height: "100%",
@@ -426,6 +338,11 @@ export default function StudentUpdatePersonalInformation() {
                         <input type="file" hidden onChange={handleFileChange} />
                       </Button>
                     </Box>
+                    {!photoURL && (
+                      <Typography color="error" variant="body2" sx={{ mt: 1 }}>
+                        A foto é obrigatória.
+                      </Typography>
+                    )}
                   </Box>
                 </Grid>
               </Grid>
@@ -433,7 +350,7 @@ export default function StudentUpdatePersonalInformation() {
 
             <List sx={ListStyle}>
               <Typography sx={TituloSecaoStyle}>
-                Seção 2 - Endereço e Responsável
+                Seção 2 - Endereço
               </Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
@@ -481,7 +398,17 @@ export default function StudentUpdatePersonalInformation() {
                     {...register("informacoesAdicionais.cep")}
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                
+              </Grid>
+           
+            </List>
+
+            <List sx={ListStyle}>
+              <Typography sx={TituloSecaoStyle}>
+                Seção 3 - Telefones de contato, informações dos responsáveis, questões de saúde.
+              </Typography>
+              <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
                   <TextField
                     label="Nome do Responsável"
                     fullWidth
@@ -508,14 +435,52 @@ export default function StudentUpdatePersonalInformation() {
                     {...register("informacoesAdicionais.email_do_responsavel")}
                   />
                 </Grid>
-              </Grid>
-            </List>
-
-            <List sx={ListStyle}>
-              <Typography sx={TituloSecaoStyle}>
-                Seção 3 - Saúde e Outros
-              </Typography>
-              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Telefone Principal do Responsável"
+                    fullWidth
+                    variant="filled"
+                    InputLabelProps={{ shrink: true }}
+                    {...register("informacoesAdicionais.primeiro_telefone_do_responsavel")}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Telefone Secundário do Responsável"
+                    fullWidth
+                    variant="filled"
+                    InputLabelProps={{ shrink: true }}
+                    {...register("informacoesAdicionais.segundo_telefone_do_responsavel")}
+                  />
+                </Grid>
+              
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Telefone Comercial do Responsável"
+                    fullWidth
+                    variant="filled"
+                    InputLabelProps={{ shrink: true }}
+                    {...register("informacoesAdicionais.telefone_comercial_do_responsavel")}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Nome do contato de emergência"
+                    fullWidth
+                    variant="filled"
+                    InputLabelProps={{ shrink: true }}
+                    {...register("informacoesAdicionais.nome_contato_emergencia")}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Telefone Principal de Emergência"
+                    fullWidth
+                    variant="filled"
+                    InputLabelProps={{ shrink: true }}
+                    {...register("informacoesAdicionais.telefone_contato_emergencia")}
+                  />
+                </Grid>
                 <Grid item xs={12} sm={6}>
                   <TextField
                     label="Possui Alergia?"
@@ -564,25 +529,12 @@ export default function StudentUpdatePersonalInformation() {
               </Grid>
             </List>
 
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={isSubmitting}
-            >
+            <Button type="submit" variant="contained" disabled={isSubmitting || (!photoURL && !selectedFile)} fullWidth>
               {isSubmitting ? "Enviando dados..." : "Atualizar Aluno"}
             </Button>
 
-            {/* Snackbar de sucesso */}
-            <Snackbar
-              open={!!successMessage}
-              autoHideDuration={6000}
-              onClose={() => setSuccessMessage(null)}
-            >
-              <Alert
-                onClose={() => setSuccessMessage(null)}
-                severity="success"
-                sx={{ width: "100%" }}
-              >
+            <Snackbar open={!!successMessage} autoHideDuration={6000} onClose={() => setSuccessMessage(null)}>
+              <Alert onClose={() => setSuccessMessage(null)} severity="success" sx={{ width: "100%" }}>
                 {successMessage}
               </Alert>
             </Snackbar>
@@ -593,10 +545,8 @@ export default function StudentUpdatePersonalInformation() {
   );
 }
 
-// Exemplo de SSR se precisar checar login
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const session = await getServerSession(context.req, context.res, authOptions);
-
   if (!session || session.user.role !== "admin") {
     return {
       redirect: {
@@ -605,8 +555,5 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
       },
     };
   }
-
-  return {
-    props: {},
-  };
+  return { props: {} };
 };

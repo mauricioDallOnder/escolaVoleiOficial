@@ -168,12 +168,14 @@ export const ListaDeChamada: React.FC<Omit<StudentPresenceTableProps, "modalidad
                       marginBottom: "16px",
                     }}
                   >
+                    
                     <Typography variant="body1" sx={{ fontWeight: "bold" }}>
                       Aviso: {selectedAluno.avisos.textaviso}
                     </Typography>
                   </Box>
                 )}
                 <ListaDeChamadaModal aluno={selectedAluno} month={selectedMonth} />
+                
               </>
             )}
             <Box sx={{ backgroundColor: "red" }}>
@@ -185,7 +187,19 @@ export const ListaDeChamada: React.FC<Omit<StudentPresenceTableProps, "modalidad
                   padding: "5px",
                 }}
               >
-                Telefone para Emergência: {selectedAluno?.telefoneComWhatsapp}
+                Telefone para Emergência: {selectedAluno?.telefone_contato_emergencia}
+              </Typography>
+            </Box>
+            <Box sx={{ backgroundColor: "red" }}>
+              <Typography
+                sx={{
+                  color: "black",
+                  fontWeight: "bold",
+                  textAlign: "center",
+                  padding: "5px",
+                }}
+              >
+                Nome do contato para Emergência : {selectedAluno?.nome_contato_emergencia}
               </Typography>
             </Box>
           </Box>

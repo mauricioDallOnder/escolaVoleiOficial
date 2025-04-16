@@ -23,7 +23,7 @@ export default async function updateStudent(
 
       let alunoEncontrado = false
 
-      // Itera por cada modalidade e suas turmas
+      // Itera por cada modalidade e suas turmas para localizar o aluno com o identificador
       for (const modalidadeNome in modalidades) {
         const modalidade = modalidades[modalidadeNome]
         if (!modalidade.turmas) continue
@@ -34,7 +34,6 @@ export default async function updateStudent(
 
           for (const alunoKey in turma.alunos) {
             const aluno = turma.alunos[alunoKey]
-            // Verifica se o campo informacoesAdicionais existe e se o IdentificadorUnico bate com o enviado no payload
             if (
               aluno.informacoesAdicionais &&
               aluno.informacoesAdicionais.IdentificadorUnico === identificadorUnico
@@ -57,7 +56,7 @@ export default async function updateStudent(
       return res.status(200).json({
         message: 'Aluno atualizado em todas as turmas com sucesso.',
       })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao atualizar aluno:', error)
       return res.status(500).json({ error: 'Erro ao atualizar aluno.' })
     }

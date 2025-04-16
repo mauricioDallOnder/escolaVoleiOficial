@@ -106,6 +106,8 @@ export interface Aluno {
   foto?: string;
   dataMatricula?: string;
   avisos?: IIAvisos;
+  telefone_contato_emergencia?:string
+  nome_contato_emergencia?:string
 }
 
 export interface Turma {
@@ -214,6 +216,7 @@ export interface IIAlunoUpdate extends Omit<Aluno, 'id' | 'presencas'> {
   dataMatricula?: string;
   nomeDaTurma:string
   modalidade:string
+  documento?:string
 }
 
 export interface ArchiveAluno extends Omit<Aluno, 'id' | 'presencas'> {

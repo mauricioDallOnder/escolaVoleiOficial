@@ -154,46 +154,42 @@ const DataProvider: React.FC<ChildrenProps> = ({ children }) => {
   }
 
   // -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  // Atualizar informações do estudante em todas as turmas em que ele está inscrito
-  const updateDataInApi = async (data: IIAlunoUpdate) => {
-    
+  // Função para atualizar informações do estudante em todas as turmas
+  // Função para atualizar os dados do aluno; garante que o payload contenha identificadorUnico.
+  const updateDataInApi = async (data: IIAlunoUpdate & { identificadorUnico?: string }) => {
+    // Tenta obter o identificador único do payload ou diretamente da informacoesAdicionais
+    const identificador = data.identificadorUnico ?? data.informacoesAdicionais?.IdentificadorUnico;
+    if (!identificador) {
+      throw new Error("identificadorUnico não fornecido.");
+    }
     const payload = {
-      nomeAluno: data.nome, // Usando o nome do aluno como chave para a atualização
+      identificadorUnico: identificador,
       novosDados: {
-        // Agrupando os novos dados em um objeto
         anoNascimento: data.anoNascimento,
         telefoneComWhatsapp: data.telefoneComWhatsapp,
-        nome: data.nome, 
+        nome: data.nome,
         informacoesAdicionais: data.informacoesAdicionais,
         foto: data.foto,
       },
-    }
-
+    };
     try {
-     
       const response = await fetch('/api/updateStudent', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      })
-
+      });
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      } else {
-        const responseData = await response.json()
-       
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+      const responseData = await response.json();
+      // Você pode retornar ou processar responseData se necessário.
     } catch (error) {
-      console.error(
-        'Erro ao atualizar informações do aluno em todas as turmas:',
-        error,
-      )
-      
+      console.error('Erro ao atualizar informações do aluno em todas as turmas:', error);
     }
-  }
+  };
 
+// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+//atualizar presença dos alunps
   // Atualizado: removida a propriedade "modalidade" do payload
   const updateAttendanceInApi = async (data: AlunoPresencaUpdate) => {
     try {
