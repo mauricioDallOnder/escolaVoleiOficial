@@ -148,7 +148,7 @@ export default function SignInSide() {
           sm={4}
           md={7}
           sx={{
-            backgroundImage:  "url(https://media.istockphoto.com/id/1295248329/pt/foto/beautiful-young-black-boy-training-on-the-football-pitch.jpg?s=2048x2048&w=is&k=20&c=4_gGjVl7gZS4rMQVQ99-8TMm0UpYG6-fw2UY2yf9GJs=)",
+            backgroundImage:  "url(https://firebasestorage.googleapis.com/v0/b/banco-de-dados-abc12.firebasestorage.app/o/volei.jpg?alt=media&token=387bea29-2253-4f09-90e8-e899c2de05ba)",
             backgroundRepeat: "no-repeat",
             backgroundColor: (t) =>
               t.palette.mode === 'light' ? t.palette.grey[50] : t.palette.grey[900],
