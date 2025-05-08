@@ -490,8 +490,17 @@ export default function CadastrarAlunoPage() {
                     variant="outlined"
                     fullWidth
                     {...register(
-                      "aluno.informacoesAdicionais.segundo_telefone_do_responsavel"
+                      "aluno.informacoesAdicionais.segundo_telefone_do_responsavel", { required: true }
                     )}
+                     error={
+                      !!errors.aluno?.informacoesAdicionais
+                        ?.segundo_telefone_do_responsavel
+                    }
+                    helperText={
+                      errors.aluno?.informacoesAdicionais
+                        ?.segundo_telefone_do_responsavel &&
+                      "Campo obrigatório"
+                    }
                   />
                 </Grid>
                 <Grid item xs={12} md={6}>
@@ -500,8 +509,17 @@ export default function CadastrarAlunoPage() {
                     variant="outlined"
                     fullWidth
                     {...register(
-                      "aluno.informacoesAdicionais.telefone_comercial_do_responsavel"
+                      "aluno.informacoesAdicionais.telefone_comercial_do_responsavel",{ required: true }
                     )}
+                      error={
+                      !!errors.aluno?.informacoesAdicionais
+                        ?.telefone_comercial_do_responsavel
+                    }
+                    helperText={
+                      errors.aluno?.informacoesAdicionais
+                        ?.telefone_comercial_do_responsavel &&
+                      "Campo obrigatório"
+                    }
                   />
                 </Grid>
                 <Grid item xs={12} md={6}>
@@ -510,8 +528,17 @@ export default function CadastrarAlunoPage() {
                     variant="outlined"
                     fullWidth
                     {...register(
-                      "aluno.informacoesAdicionais.nome_contato_emergencia"
+                      "aluno.informacoesAdicionais.nome_contato_emergencia",{ required: true }
                     )}
+                    error={
+                      !!errors.aluno?.informacoesAdicionais
+                        ?.nome_contato_emergencia
+                    }
+                    helperText={
+                      errors.aluno?.informacoesAdicionais
+                        ?.nome_contato_emergencia &&
+                      "Campo obrigatório"
+                    }
                   />
                 </Grid>
                 <Grid item xs={12} md={6}>
@@ -520,8 +547,17 @@ export default function CadastrarAlunoPage() {
                     variant="outlined"
                     fullWidth
                     {...register(
-                      "aluno.informacoesAdicionais.telefone_contato_emergencia"
+                      "aluno.informacoesAdicionais.telefone_contato_emergencia",{ required: true }
                     )}
+                    error={
+                      !!errors.aluno?.informacoesAdicionais
+                        ?.telefone_contato_emergencia
+                    }
+                    helperText={
+                      errors.aluno?.informacoesAdicionais
+                        ?.telefone_contato_emergencia &&
+                      "Campo obrigatório"
+                    }
                   />
                 </Grid>
               </Grid>
