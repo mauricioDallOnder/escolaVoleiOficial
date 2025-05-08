@@ -178,8 +178,10 @@ const drawer = (
       sx={{
         flexGrow: 1,
         p: 3,
-        marginTop: '65px',
-        width: { sm: `calc(100% - ${drawerWidth}px)` },
+        mt: '65px',
+        // width responsivo: em xs ocupa 100%, em sm considera o drawer
+        width: { xs: '100%', sm: `calc(100% - ${drawerWidth}px)` },
+        boxSizing: 'border-box',
       }}
     >
       {/* Utilize o componente Grid para organizar os cartões em linha */}

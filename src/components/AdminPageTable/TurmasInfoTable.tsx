@@ -18,7 +18,7 @@ import {
   Select,
   SelectChangeEvent,
   Typography,
-  Button,
+  Button,useTheme, useMediaQuery
 } from '@mui/material';
 
 import { ControleFrequenciaTableNoSSR } from './DynamicComponents';
@@ -27,6 +27,8 @@ import { useData } from '@/context/context';
 import { TurmaPresencaSemanal } from './TurmaPresencaSemanal';
 
 export default function TurmasInfoTable() {
+  const theme = useTheme();
+  const isXs = useMediaQuery(theme.breakpoints.down('sm'));
   const { fetchModalidades } = useData();
   const [modalidades, setModalidades] = useState<Modalidade[]>([]);
   const [selectedModalidade, setSelectedModalidade] = useState<string>('');
@@ -87,7 +89,15 @@ export default function TurmasInfoTable() {
   };
 
   return (
-    <Box sx={BoxStyleTurmaInfoTable}>
+    <Box
+    sx={{
+      ...BoxStyleTurmaInfoTable,
+      // padding responsivo e full width
+      p: isXs ? '1em' : '2.5em',
+      width: '100%',
+      boxSizing: 'border-box',
+    }}
+  >
       <Typography sx={TituloSecaoStyle}>
         Informações Gerais das Turmas
       </Typography>
@@ -116,8 +126,17 @@ export default function TurmasInfoTable() {
         />
       </FormControl>
       <Divider sx={{ my: 2 }} />
-      <TableContainer component={Paper} sx={{ boxShadow: 3, borderRadius: 2 }}>
-        <Table aria-label="simple table">
+      <TableContainer component={Paper} sx={{
+    boxShadow: 3,
+    borderRadius: 2,
+
+    /* força o container a ser independente do overflow global */
+    display: 'block',
+    position: 'relative',  
+    overflowX: 'auto',
+    WebkitOverflowScrolling: 'touch',  // para uma melhor rolagem em iOS
+  }}>
+      <Table aria-label="simple table" size={isXs ? 'small' : 'medium'} sx={{ minWidth: 650 }}>
           <TableHead>
             <TableRow sx={{ bgcolor: 'primary.main' }}>
               <TableCell sx={{ color: 'primary.contrastText'}}>Nome da Turma</TableCell>
