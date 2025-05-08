@@ -486,7 +486,7 @@ export default function CadastrarAlunoPage() {
                 </Grid>
                 <Grid item xs={12} md={6}>
                   <TextField
-                    label="Segundo Telefone do Responsável (opcional)"
+                    label="Segundo Telefone do Responsável"
                     variant="outlined"
                     fullWidth
                     {...register(
