@@ -191,7 +191,7 @@ export default function StudantTableGeral() {
         nome: normalizeText(aluno.nome),
         anoNascimento: normalizeText(aluno.anoNascimento),
         dataMatricula: normalizeText(aluno.dataMatricula),
-       // telefoneComWhatsapp: normalizeText(aluno.telefoneComWhatsapp),
+       alunoDocumento: normalizeText(aluno.documento),
 
         // Campos em informacoesAdicionais
         Nome__do_responsavel: normalizeText(info.Nome__do_responsavel),
@@ -280,6 +280,12 @@ export default function StudantTableGeral() {
     {
       field: "dataMatricula",
       headerName: "Data Matrícula",
+      width: 130,
+      cellClassName: "cell-wrap",
+    },
+     {
+      field: "alunoDocumento",
+      headerName: "Doc. do Aluno",
       width: 130,
       cellClassName: "cell-wrap",
     },
