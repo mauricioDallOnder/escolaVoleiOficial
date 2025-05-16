@@ -108,6 +108,7 @@ export interface Aluno {
   avisos?: IIAvisos;
   telefone_contato_emergencia?:string
   nome_contato_emergencia?:string
+  documento?:string
 }
 
 export interface Turma {
