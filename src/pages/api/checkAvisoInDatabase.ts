@@ -17,11 +17,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         let avisoEncontrado = null;
         Object.keys(turmas).forEach(turmaKey => {
             const turma = turmas[turmaKey];
-            if (turma.nome_da_turma === nomeDaTurma) {
+            if (turma.nome_da_turma.trim() === nomeDaTurma.trim()) {
                 const alunos = turma.alunos || {};
                 Object.keys(alunos).forEach(alunoKey => {
                     const aluno = alunos[alunoKey];
-                    if (aluno.nome === alunoNome) {
+                    if (aluno.nome.trim() === alunoNome.trim()) {
                         if (aluno.avisos) {
                             avisoEncontrado = aluno.avisos;
                         }
