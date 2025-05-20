@@ -22,6 +22,7 @@ import { DataContext } from "@/context/context";
 import { modalStyle } from "@/utils/Styles";
 import { ListaDeChamadaModal } from "./ListaDeChamadaModal";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import ControleFrequenciaTableProfessor from "./ProfessorListaGeralDeFaltas";
 
 export const ListaDeChamada: React.FC<Omit<StudentPresenceTableProps, "modalidade">> = ({
   alunosDaTurma,
@@ -35,6 +36,8 @@ export const ListaDeChamada: React.FC<Omit<StudentPresenceTableProps, "modalidad
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [filteredAlunos, setFilteredAlunos] = useState<Aluno[]>([]);
   const [search, setSearch] = useState("");
+    // Estado para controle de frequência mensal
+  const [openFreq, setOpenFreq] = useState<boolean>(false);
   const theme = useTheme();
   const isXs = useMediaQuery(theme.breakpoints.down("xs"));
 
@@ -250,6 +253,14 @@ export const ListaDeChamada: React.FC<Omit<StudentPresenceTableProps, "modalidad
           value={search}
           onChange={handleSearchChange}
         />
+        {/* Botão de Frequência Mensal */}
+        {selectedMonth && (
+          <Box sx={{ mt: 2, textAlign: 'center' }}>
+            <Button variant="contained" color='secondary' onClick={() => setOpenFreq(true)}>
+              Ver Tabela Frequência Mensal Completa
+            </Button>
+          </Box>
+        )}
 
         {selectedDay && (
           <TableContainer component={Paper} sx={tableContainerStyles}>
@@ -394,6 +405,14 @@ export const ListaDeChamada: React.FC<Omit<StudentPresenceTableProps, "modalidad
           Número de alunos presentes: {countPresentStudents()}
         </Typography>
       )}
+       {/* Modal de Frequência Mensal */}
+      <ControleFrequenciaTableProfessor
+        isOpen={openFreq}
+        onClose={() => setOpenFreq(false)}
+        alunosDaTurma={alunosDaTurma}
+        nomeDaTurma={nomeDaTurma}
+        initialMonth={selectedMonth}
+      />
     </Container>
   );
 };

@@ -36,6 +36,8 @@ import autoTable from 'jspdf-autotable'    // note a importação direta da fun�
 interface ControleFrequenciaTableProps extends AdminTableProps {
   isOpen: boolean;
   onClose: () => void;
+   /** mês para pré-selecionar */
+  initialMonth?: string
 }
 
 // Listas de meses para 1º e 2º semestres

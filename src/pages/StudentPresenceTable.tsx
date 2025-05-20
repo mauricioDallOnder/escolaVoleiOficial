@@ -20,6 +20,7 @@ import { GetServerSideProps } from "next";
 import { HeaderForm } from "@/components/HeaderDefaultForm";
 import Layout from "@/components/TopBarComponents/Layout";
 import TemporaryStudentRegistration from "@/components/TemporaryStudents/StudentTemporaryModalRegistration";
+import Link from "next/link";
 
 export default function StudentPresenceTable() {
   const { modalidades, fetchModalidades } = useData();
@@ -138,14 +139,16 @@ export default function StudentPresenceTable() {
             >
               Adicionar aluno temporário
             </Button>
-            <Button
-              sx={{ fontSize: "12px", mt: "8px" }}
-              color="success"
-              variant="contained"
-              onClick={refreshPage}
-            >
-              Salvar Dados/Atualizar Pagina
-            </Button>
+         <Button
+      component={Link}               // <- usa o Link do Next.js como componente
+      href="/ListaDeAlunosParaProfs" // <- rota para onde vai
+      sx={{ fontSize: '12px', mt: 1 }}
+      color="secondary"
+      variant="contained"
+    >
+      Acessar lista Geral de Alunos
+    </Button>
+           
           </Box>
         </form>
         <Modal
