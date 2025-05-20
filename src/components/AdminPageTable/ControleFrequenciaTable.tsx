@@ -24,6 +24,10 @@ import {
 } from "@mui/material";
 import { AdminTableProps, Aluno } from "@/interface/interfaces";
 
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'    // note a importação direta da função
+
+
 /**
  * Props adicionais para o modal:
  * - isOpen: se o modal está aberto
@@ -178,6 +182,46 @@ export default function ControleFrequenciaTable({
     });
   }, [alunosDaTurma, selectedMonth, allDayKeysInMonth]);
 
+ function handleExportPDF() {
+  // 2) cria o documento em landscape
+  const doc = new jsPDF({ orientation: 'landscape' })
+
+  // 3) título
+  doc.setFontSize(14)
+  doc.text(`Frequência Mensal — ${nomeDaTurma} (${selectedMonth})`, 14, 16)
+
+  // 4) monta cabeçalho e corpo
+  const head = [[
+    'Aluno',
+    ...allDayKeysInMonth,
+    'Total de Faltas',
+    'Total de Presenças',
+    'Frequência (%)'
+  ]]
+  const body = tableData.map(row => [
+    row.nome,
+    ...allDayKeysInMonth.map(dayKey => (row.days[dayKey] ? '.' : 'F')),
+    row.totalFaltas,
+    row.totalPresencas,
+    row.freq
+  ])
+
+  // 5) gera a tabela chamando diretamente autoTable
+  autoTable(doc, {
+    startY: 22,
+    head,
+    body,
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [25, 118, 210] },
+    theme: 'grid',
+    margin: { left: 12, right: 12 },
+  })
+
+  // 6) salva o PDF
+  doc.save(`frequencia_${nomeDaTurma}_${selectedMonth}.pdf`)
+}
+
+
   return (
     <Modal open={isOpen} onClose={onClose} aria-labelledby="modal-title">
       <Box
@@ -204,6 +248,7 @@ export default function ControleFrequenciaTable({
           Frequência Mensal na Turma: {nomeDaTurma}
         </Typography>
 
+
         {/* Seletor de Semestre */}
         <FormControl component="fieldset" sx={{ mb: 2 }}>
           <Typography sx={{ color: "black", mb: 1 }} variant="subtitle1">
@@ -228,6 +273,9 @@ export default function ControleFrequenciaTable({
             />
           </RadioGroup>
         </FormControl>
+        <Button onClick={handleExportPDF} variant="contained" color="error">
+            Exportar Tabela de Frequência
+          </Button>
 
         {/* Seletor de Mês */}
         <FormControl fullWidth sx={{ mb: 3 }}>
