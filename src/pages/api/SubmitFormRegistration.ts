@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import admin from "../../config/firebaseAdmin";
 
 // Importe a função que gera presenças de acordo com o semestre
-import { gerarPresencasParaAlunoSemestre } from "@/utils/Constants";
+import { gerarPresencasSemestre } from "@/utils/Constants";
 import { v4 as uuidv4 } from "uuid";
 
 const db = admin.database();
@@ -40,25 +40,18 @@ export default async function submitForm(req: NextApiRequest, res: NextApiRespon
     return res.status(405).end("Method Not Allowed");
   }
 
-  // Pode chegar 1 objeto ou um array de objetos
   const itensRecebidos = Array.isArray(req.body) ? req.body : [req.body];
   const resultados: any[] = [];
 
   for (const item of itensRecebidos) {
-    const { turmaSelecionada, aluno } = item;
-    const modalidade = "volei"; // fixo ou conforme sua lógica
+    const { turmaSelecionada, aluno, modalidade = "volei" } = item; // Definimos "volei" como padrão
 
     if (!turmaSelecionada) {
-      resultados.push({
-        sucesso: false,
-        erro: "Turma não informada.",
-        aluno,
-      });
+      resultados.push({ sucesso: false, erro: "Turma não informada.", aluno });
       continue;
     }
 
     try {
-      // 1) Localiza a turma "nome_da_turma = turmaSelecionada"
       const turmaRef = db
         .ref(`modalidades/${modalidade}/turmas`)
         .orderByChild("nome_da_turma")
@@ -66,11 +59,7 @@ export default async function submitForm(req: NextApiRequest, res: NextApiRespon
 
       const snapshot = await turmaRef.once("value");
       if (!snapshot.exists()) {
-        resultados.push({
-          sucesso: false,
-          erro: "Turma não encontrada",
-          aluno,
-        });
+        resultados.push({ sucesso: false, erro: "Turma não encontrada", aluno });
         continue;
       }
 
@@ -78,125 +67,73 @@ export default async function submitForm(req: NextApiRequest, res: NextApiRespon
       const turmaKey = Object.keys(turmaData)[0];
       const turmaEncontrada = turmaData[turmaKey];
 
-      // 2) Verifica capacidade
       if (
         turmaEncontrada.capacidade_atual_da_turma >=
         turmaEncontrada.capacidade_maxima_da_turma
       ) {
-        resultados.push({
-          sucesso: false,
-          erro: `Não há vagas disponíveis na turma ${turmaEncontrada.nome_da_turma}.`,
-          aluno,
-        });
+        resultados.push({ sucesso: false, erro: `Não há vagas na turma ${turmaEncontrada.nome_da_turma}.`, aluno });
         continue;
       }
-
-      // 3) Verifica duplicidade de aluno (pelo nome normalizado)
-      const alunosSnapshot = await db
-        .ref(`modalidades/${modalidade}/turmas/${turmaKey}/alunos`)
-        .once("value");
-      const alunosExistentes = alunosSnapshot.val() || {};
+      
+      const alunosRef = db.ref(`modalidades/${modalidade}/turmas/${turmaKey}/alunos`);
+      const alunosSnapshot = await alunosRef.once("value");
+      const alunosExistentes = alunosSnapshot.val() || [];
       const nomeAlunoNormalizado = aluno.nome.trim().toLowerCase();
-
+      
       const duplicado = Object.values(alunosExistentes).some(
         (alunoExistente: any) =>
-          alunoExistente.nome.trim().toLowerCase() === nomeAlunoNormalizado
+          alunoExistente && alunoExistente.nome && alunoExistente.nome.trim().toLowerCase() === nomeAlunoNormalizado
       );
+
       if (duplicado) {
-        resultados.push({
-          sucesso: false,
-          erro: `Aluno já cadastrado na turma ${turmaEncontrada.nome_da_turma}.`,
-          aluno,
-        });
+        resultados.push({ sucesso: false, erro: `Aluno já cadastrado na turma ${turmaEncontrada.nome_da_turma}.`, aluno });
         continue;
       }
 
-      // 4) Gera presenças para cada dia da semana
-      const diasDaTurma = Array.isArray(turmaEncontrada.diaDaSemana)
-        ? turmaEncontrada.diaDaSemana
-        : [turmaEncontrada.diaDaSemana]; // fallback
+      // 2. LÓGICA ATUALIZADA: Usamos a nova função de forma direta.
+      const diasDaTurma = turmaEncontrada.diaDaSemana;
 
-      // Checa se "diasDaTurma" é pelo menos um array com strings válidas
-      if (!diasDaTurma || diasDaTurma.length === 0) {
-        throw new Error(
-          `A turma ${turmaEncontrada.nome_da_turma} não possui diaDaSemana válidos.`
-        );
+      if (!Array.isArray(diasDaTurma) || diasDaTurma.length === 0) {
+        throw new Error(`A turma ${turmaEncontrada.nome_da_turma} não possui dias da semana válidos definidos.`);
       }
 
-      // Determina o semestre com base no mês atual
-      const mesAtual = new Date().getMonth() + 1; // 1..12
-      const semestreDetectado = mesAtual < 7 ? "primeiro" : "segundo";
-      const anoAtual = new Date().getFullYear();
+      const currentDate = new Date();
+      const anoAtual = currentDate.getFullYear();
+      const semestreAtual = currentDate.getMonth() < 6 ? 'primeiro' : 'segundo';
+      
+      // Chamamos a função UMA VEZ, passando o array completo de dias.
+      const presencasGeradas = gerarPresencasSemestre(
+        diasDaTurma,
+        semestreAtual,
+        anoAtual
+      );
 
-      // Objeto final de presenças
-      let presencasFinais: Record<string, Record<string, boolean>> = {};
-
-      // Array de dias válidos para .toUpperCase():
-      const diasValidos = [
-        "SEGUNDA",
-        "TERÇA",
-        "QUARTA",
-        "QUINTA",
-        "SEXTA",
-        "SÁBADO",
-        "DOMINGO",
-      ];
-
-      for (const diaSemana of diasDaTurma) {
-        // Verifica se "diaSemana" é string
-        if (typeof diaSemana !== "string") {
-          throw new Error(
-            `diaSemana inválido na turma: ${JSON.stringify(diaSemana)}`
-          );
-        }
-        // Verifica se é um dos dias válidos
-        if (!diasValidos.includes(diaSemana.toUpperCase())) {
-          throw new Error(
-            `Dia da semana inválido: "${diaSemana}". Esperava algo como SEGUNDA, TERÇA, etc.`
-          );
-        }
-
-        // Gera presenças para esse dia
-        const presencasUmDia = gerarPresencasParaAlunoSemestre(
-          diaSemana.toUpperCase(),
-          semestreDetectado,
-          anoAtual
-        );
-
-        // Mesclamos
-        presencasFinais = mesclarPresencas(presencasFinais, presencasUmDia);
-      }
-
-      // 5) Atribui no aluno
-      aluno.presencas = presencasFinais;
-      aluno.dataMatricula = new Date().toLocaleDateString("pt-BR");
-
+      // 3. Atribuímos os dados gerados ao aluno
+      aluno.presencas = presencasGeradas;
+      aluno.dataMatricula = currentDate.toLocaleDateString("pt-BR");
+      
       if (!aluno.informacoesAdicionais) {
         aluno.informacoesAdicionais = {};
       }
       aluno.informacoesAdicionais.IdentificadorUnico = uuidv4();
+      
+      // Lógica para obter o novo ID do aluno de forma segura
+      const novoIndex = alunosExistentes.length;
+      aluno.id = novoIndex; // IDs em arrays são baseados no índice
 
-      // 6) Gera ID incremental
-      const novoIdAluno = Object.keys(alunosExistentes).length + 1;
-      aluno.id = novoIdAluno;
+      // Salva o novo aluno no final do array de alunos da turma
+      await alunosRef.child(String(novoIndex)).set(aluno);
 
-      // 7) Salva no DB
-      await db
-        .ref(
-          `modalidades/${modalidade}/turmas/${turmaKey}/alunos/${novoIdAluno}`
-        )
-        .set(aluno);
-
-      // 8) Atualiza contadores da turma
+      // Atualiza os contadores da turma
       await db.ref(`modalidades/${modalidade}/turmas/${turmaKey}`).update({
-        capacidade_atual_da_turma:
-          turmaEncontrada.capacidade_atual_da_turma + 1,
-        contadorAlunos: novoIdAluno,
+        capacidade_atual_da_turma: turmaEncontrada.capacidade_atual_da_turma + 1,
+        contadorAlunos: (turmaEncontrada.contadorAlunos || 0) + 1,
       });
 
-      // 9) Sucesso
       resultados.push({ sucesso: true, aluno });
+
     } catch (erro: any) {
+      console.error("Erro ao processar aluno:", erro);
       resultados.push({ sucesso: false, erro: erro.message, aluno });
     }
   }
