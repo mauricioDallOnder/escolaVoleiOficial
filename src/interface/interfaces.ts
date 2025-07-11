@@ -168,6 +168,7 @@ export interface StudentPresenceTableProps {
   setAlunosDaTurma: React.Dispatch<React.SetStateAction<Aluno[]>>;
   nomeDaTurma: string;
   alunoId?: number;
+  diaDaSemanaSelecionado: string; // <-- ADICIONE ESTA LINHA
 }
 
 export interface AdminTableProps {

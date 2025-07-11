@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import admin from '../../config/firebaseAdmin';
 import {
-  extrairDiaDaSemana,
-  gerarPresencasParaAlunoSemestre
+  extrairDiasDaSemana, // MODIFICADO: Usaremos a nova função
+  gerarPresencasParaSemestreVariosDias // MODIFICADO: Usaremos a nova função
 } from '@/utils/Constants';
 
 const db = admin.database();
@@ -13,7 +13,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).end('Method Not Allowed');
   }
 
-  // Espera-se que o body contenha { ano, semestre, modalidade }
   const { ano, semestre, modalidade } = req.body;
   if (!modalidade || !ano || !semestre) {
     return res.status(400).json({ error: 'Dados incompletos. Ex: { ano, semestre, modalidade }' });
@@ -25,14 +24,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     for (const turma of modalidade.turmas) {
       console.log('Processando turma:', turma.nome_da_turma);
 
-      // Extrai o dia da semana a partir do nome da turma
-      const diaDaSemana = extrairDiaDaSemana(turma.nome_da_turma);
-      console.log('Dia da semana extraído:', diaDaSemana);
+      // MODIFICADO: Extrai TODOS os dias da semana a partir do nome da turma
+      const diasDaSemana = extrairDiasDaSemana(turma.nome_da_turma);
+      console.log('Dias da semana extraídos:', diasDaSemana);
 
-      // Gera presenças para o semestre informado (primeiro: jan..jun ou segundo: jul..dez) para o ano informado
-      const novasPresencas = gerarPresencasParaAlunoSemestre(diaDaSemana, semestre, ano);
+      if (diasDaSemana.length === 0) {
+        console.warn(`Nenhum dia da semana válido encontrado para a turma: ${turma.nome_da_turma}. Pulando.`);
+        continue;
+      }
 
-      // Busca a turma no Firebase usando o nome_da_turma (normalizado)
+      // MODIFICADO: Gera presenças para TODOS os dias da semana extraídos
+      const novasPresencas = gerarPresencasParaSemestreVariosDias(diasDaSemana, semestre, ano);
+
+      // Busca a turma no Firebase
       const turmaSnapshot = await db.ref(`modalidades/${modalidade.nome}/turmas`)
         .orderByChild('nome_da_turma')
         .equalTo(turma.nome_da_turma)
@@ -47,11 +51,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const turmaKey = Object.keys(turmaData)[0];
       console.log('Turma encontrada com key:', turmaKey);
 
-      // Obtém os alunos da turma como objeto – mesmo se armazenado como array, o Firebase transforma em objeto
       const alunosObj = turmaData[turmaKey].alunos || {};
       console.log('Chaves dos alunos:', Object.keys(alunosObj));
 
-      // Itera sobre todas as chaves dos alunos
+      // Itera sobre todas as chaves dos alunos e atualiza as presenças
       for (const alunoKey of Object.keys(alunosObj)) {
         const aluno = alunosObj[alunoKey];
         if (aluno) {
