@@ -120,6 +120,9 @@ export interface Presencas {
 interface DiasDaSemanaMap {
   [dia: string]: number;
 }
+interface diaDaSemanaMap2 {
+  [dia: string]: number;
+}
 
 /**
  * Extrai o dia da semana de um nome de turma que contém algo como
@@ -323,6 +326,51 @@ export function gerarDiasDoMesSemestre(
 }
 
 
+
+export function gerarPresencasParaVariosDias(diaDaSemana: string[]): Presencas {
+  // Mapeia string => número do JavaScript
+  const diaDaSemanaMap: diaDaSemanaMap2 = {
+    SEGUNDA: 1,
+    TERÇA: 2,
+    QUARTA: 3,
+    QUINTA: 4,
+    SEXTA: 5,
+    SÁBADO: 6,
+    DOMINGO: 0,
+  };
+
+  const anoCorrente = new Date().getFullYear();
+  const mesAtual = new Date().getMonth() + 1;
+
+  // Se o mês atual < 7, geramos presenças de janeiro(1) a junho(6).
+  // Caso contrário, julho(7) a dezembro(12).
+  const inicio = mesAtual < 7 ? 1 : 7;
+  const fim = mesAtual < 7 ? 6 : 12;
+
+  const presencas: Presencas = {};
+
+  // Percorre cada mês do semestre
+  for (let mes = inicio; mes <= fim; mes++) {
+    // Nome do mês em pt-BR (tudo minúsculo, ou ajusta se preferir)
+    const nomeMes = new Date(anoCorrente, mes - 1, 1).toLocaleString("pt-BR", {
+      month: "long",
+    });
+    presencas[nomeMes] = presencas[nomeMes] || {};
+
+    // Para cada dia da semana escolhido, gera as datas e adiciona no objeto
+    diaDaSemana.forEach((diaSemanaString) => {
+      const diaJs = diaDaSemanaMap[diaSemanaString.toUpperCase()];
+      if (diaJs === undefined) return; // ignora se não for válido
+
+      const datasDoMes = gerarDiasDoMes(anoCorrente, mes, diaJs);
+      datasDoMes.forEach((dataStr) => {
+        presencas[nomeMes][dataStr] = true;
+      });
+    });
+  }
+
+  return presencas;
+}
 //----------------------------------------------------------------------------------------------
 
 const resizeImage = (file: File) => {

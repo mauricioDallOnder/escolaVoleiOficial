@@ -1,158 +1,258 @@
-// src/pages/api/HandleNewTurmas.ts
-
-import type { NextApiRequest, NextApiResponse } from 'next';
-import admin from '../../config/firebaseAdmin';
-import { z } from 'zod';
-import { v4 as uuidv4 } from 'uuid';
+import type { NextApiRequest, NextApiResponse } from "next";
+import admin from "../../config/firebaseAdmin";
+import { z } from "zod";
+import { v4 as uuidv4 } from "uuid";
+import { gerarPresencasParaVariosDias } from "@/utils/Constants";
 
 const database = admin.database();
 
-// Esquema de validação para exclusão de turma utilizando Zod
-const deleteTurmaSchema = z.object({
-  modalidade: z.string().min(1, { message: 'A modalidade é obrigatória.' }),
-  uuidTurma: z.string().uuid({ message: 'O uuidTurma deve ser um UUID válido.' })
+/**
+ * Definimos diaDaSemana no Zod, e permitimos a categoria ser livre (só min(1)).
+ * Esse é o "createTurmaSchema".
+ */
+const createTurmaSchema = z.object({
+  categoria: z.string().min(1),
+  diaDaSemana: z.array(z.string()).nonempty(),
+  horario: z.string().min(1),
+  capacidade_maxima_da_turma: z.number().min(1),
 });
 
-// Função handler que direciona a requisição de acordo com o método HTTP
-export default async function handler(request: NextApiRequest, response: NextApiResponse) {
-  switch (request.method) {
-    case 'POST':
-      return handlePost(request, response);
-    case 'PUT':
-      return handlePut(request, response);
-    case 'DELETE':
-      return handleDelete(request, response);
-    default:
-      response.setHeader('Allow', ['POST', 'PUT', 'DELETE']);
-      return response.status(405).end('Method Not Allowed');
+/**
+ * updateTurmaSchema
+ */
+const updateTurmaSchema = z.object({
+  uuidTurma: z.string().uuid({ message: "O uuidTurma deve ser um UUID válido." }),
+  nome_da_turma: z.string().min(1),
+  capacidade_maxima_da_turma: z.number().min(1),
+  categoria: z.string().min(1),
+  diaDaSemana: z.array(z.string()).optional(),
+  horario: z.string().optional(),
+  modalidade: z.string().min(1),
+});
+
+/**
+ * deleteTurmaSchema
+ */
+const deleteTurmaSchema = z.object({
+  modalidade: z.string().min(1),
+  uuidTurma: z.string().uuid(),
+});
+
+/**
+ * Handler principal /api/HandleNewTurmas
+ */
+export default async function handleTurmasApi(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  try {
+    switch (req.method) {
+      case "POST":
+        return await handlePost(req, res);
+      case "PUT":
+        return await handlePut(req, res);
+      case "DELETE":
+        return await handleDelete(req, res);
+      default:
+        res.setHeader("Allow", ["POST", "PUT", "DELETE"]);
+        return res.status(405).end("Method Not Allowed");
+    }
+  } catch (error) {
+    console.error("Erro no handler principal de turmas:", error);
+    return res.status(500).json({ message: "Erro no servidor" });
   }
 }
 
-// Função para criar uma nova turma (método POST)
-async function handlePost(request: NextApiRequest, response: NextApiResponse) {
+// POST => cria turma
+async function handlePost(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // Extraindo e validando os dados da requisição (aqui assumimos que os dados já estão válidos)
-    const newClassData = request.body;
-    const { modalidade,categoria, capacidade_maxima_da_turma, diaDaSemana, horario } = newClassData;
-    
-    // Cria o nome da turma com base na categoria, núcleo, dia da semana e horário
-    const className = `${categoria}_${diaDaSemana}_${horario}`;
-    
-    // Gera um identificador único para a turma
-    const uuidDaTurma = uuidv4();
-    
-    // Obtém a referência para as turmas da modalidade informada
-    const modalidadeReference = database.ref(`modalidades/${modalidade}/turmas`);
-    const modalidadeSnapshot = await modalidadeReference.once('value');
-    
-    // Determina o novo índice da turma com base na quantidade de turmas existentes
-    const newClassIndex = modalidadeSnapshot.exists() ? modalidadeSnapshot.numChildren() : 0;
-    
-    // Cria o objeto da nova turma com os dados informados
-    const newClass = {
-      nome_da_turma: className,
-      modalidade: modalidade,
-      categoria: categoria,
-      capacidade_maxima_da_turma: capacidade_maxima_da_turma,
-      capacidade_atual_da_turma: 0,
-      alunos: [],
-      uuidTurma: uuidDaTurma,
-      contadorAlunos: 0
+    const { categoria, diaDaSemana, horario, capacidade_maxima_da_turma } =
+      createTurmaSchema.parse(req.body);
+
+    // Forçamos underscores e uppercase em dias
+    const safeCat = categoria.replace(/\s+/g, "_");
+    const safeDias = diaDaSemana.map((d) => d.replace(/\s+/g, "_").toUpperCase());
+    const safeHora = horario.replace(/\s+/g, "_");
+
+    const nomeDaTurma = `${safeCat}_${safeDias.join("_")}_${safeHora}`;
+
+    // Gera presenças p/ esse array de dias
+    const presencasGeradas = gerarPresencasParaVariosDias(safeDias);
+
+    // Exemplo: Aluno teste
+    const alunoTeste = {
+      id: 1,
+      nome: "Teste",
+      anoNascimento: "2000-01-01",
+      dataMatricula: new Date().toLocaleDateString(),
+      telefoneComWhatsapp: "00000000000",
+      presencas: presencasGeradas,
+      informacoesAdicionais: {
+        Nome__do_responsavel: "Teste",
+        data_de_nascimento_responsavel: "2000-01-01",
+        documento_do_responsavel: "00000000000",
+        email_do_responsavel: "teste@teste.com",
+        endereco: "Teste",
+        bairro: "Teste",
+        cep: "00000000",
+        complemento: "",
+        numero_endereço: "0",
+        plano_de_saude: "Nenhum",
+        Possui_alergia: "Não",
+        nome_contato_emergencia: "Teste",
+        telefone_contato_emergencia: "00000000000",
+        primeiro_telefone_do_responsavel: "00000000000",
+        segundo_telefone_do_responsavel: "00000000000",
+        telefone_comercial_do_responsavel: "00000000000",
+        local_de_trabalho_do_responsavel: "Teste",
+        funcao_do_responsavel: "Teste",
+        uniforme_do_aluno: "P",
+        IdentificadorUnico: uuidv4(),
+        hasUniforme: false,
+      },
     };
-    
-    // Adiciona a nova turma na próxima posição disponível
-    await modalidadeReference.child(newClassIndex.toString()).set(newClass);
-    
-    return response.status(200).json({ message: 'Turma adicionada com sucesso', turma: newClass });
+
+    // Modalidade fixa: "volei"
+    const modalidade = "volei";
+    const turmasRef = database.ref(`modalidades/${modalidade}/turmas`);
+    const snap = await turmasRef.once("value");
+    const newIndex = snap.exists() ? snap.numChildren() : 0;
+
+    const uuidTurma = uuidv4();
+    const novaTurma = {
+      nome_da_turma: nomeDaTurma,
+      uuidTurma,
+      categoria: safeCat,
+      diaDaSemana: safeDias,
+      horario: safeHora,
+      capacidade_maxima_da_turma,
+      capacidade_atual_da_turma: 1,
+      contadorAlunos: 1,
+      alunos: [alunoTeste],
+    };
+
+    await turmasRef.child(String(newIndex)).set(novaTurma);
+    return res.status(201).json({
+      message: "Turma criada com sucesso",
+      turma: novaTurma,
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return response.status(400).json({ message: 'Dados inválidos', errors: error.errors });
+      return res
+        .status(400)
+        .json({ message: "Dados inválidos", errors: error.errors });
     }
-    return response.status(500).json({ message: 'Erro no servidor' });
+    console.error("Erro ao criar turma:", error);
+    return res.status(500).json({ message: "Erro no servidor" });
   }
 }
 
-// Função para atualizar os dados de uma turma (método PUT)
-async function handlePut(request: NextApiRequest, response: NextApiResponse) {
+// PUT => atualiza turma
+async function handlePut(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // Define um esquema de validação parcial para atualização
-    const updateClassSchema = z.object({
-      uuidTurma: z.string().uuid(),
-      modalidade: z.string().min(1),
-      nome_da_turma: z.string().min(1),
-      capacidade_maxima_da_turma: z.number().min(1),
-      nucleo: z.string().min(1),
-      categoria: z.string().min(1)
-    });
-    const updateClassData = updateClassSchema.parse(request.body);
-    const { uuidTurma, modalidade, nome_da_turma, capacidade_maxima_da_turma, nucleo, categoria } = updateClassData;
-    
-    // Procura a turma a ser atualizada usando o uuidTurma
-    const classReference = database.ref(`modalidades/${modalidade}/turmas`)
-      .orderByChild('uuidTurma')
+    const {
+      uuidTurma,
+      nome_da_turma,
+      capacidade_maxima_da_turma,
+      categoria,
+      diaDaSemana,
+      horario,
+      modalidade,
+    } = updateTurmaSchema.parse(req.body);
+
+    const refBuscada = database
+      .ref(`modalidades/${modalidade}/turmas`)
+      .orderByChild("uuidTurma")
       .equalTo(uuidTurma);
-    const snapshot = await classReference.once('value');
-    
-    if (!snapshot.exists()) {
-      return response.status(404).json({ message: 'Turma não encontrada' });
+    const snap = await refBuscada.once("value");
+    if (!snap.exists()) {
+      return res
+        .status(404)
+        .json({ message: "Turma não encontrada para esse uuidTurma." });
     }
-    
-    // Obtém a chave da turma encontrada
-    const classKey = Object.keys(snapshot.val())[0];
-    
-    // Atualiza os campos desejados da turma
-    await database.ref(`modalidades/${modalidade}/turmas/${classKey}`).update({
-      nome_da_turma: nome_da_turma,
-      capacidade_maxima_da_turma: capacidade_maxima_da_turma,
-      nucleo: nucleo,
-      categoria: categoria
+
+    const turmaKey = Object.keys(snap.val())[0];
+
+    // Força underscores e uppercase
+    const safeCat = categoria.replace(/\s+/g, "_");
+    const safeNome = nome_da_turma.replace(/\s+/g, "_"); 
+    // Se também quiser forçar uppercase nos dias contidos em 'nome_da_turma', etc, poderia extrair e manipular,
+    // mas a normalização principal está no create. Aqui supomos que 'nome_da_turma' vem "pronto".
+
+    const atualizacoes: any = {
+      nome_da_turma: safeNome,
+      capacidade_maxima_da_turma,
+      categoria: safeCat,
+    };
+
+    // Se "diaDaSemana" veio, normalizamos
+    if (diaDaSemana && Array.isArray(diaDaSemana)) {
+      const safeDias = diaDaSemana.map((d) =>
+        d.replace(/\s+/g, "_").toUpperCase()
+      );
+      atualizacoes.diaDaSemana = safeDias;
+    }
+
+    // Se "horario" veio, normalizamos
+    if (horario) {
+      const safeHora = horario.replace(/\s+/g, "_");
+      atualizacoes.horario = safeHora;
+    }
+
+    await database
+      .ref(`modalidades/${modalidade}/turmas/${turmaKey}`)
+      .update(atualizacoes);
+
+    return res.status(200).json({
+      message: "Turma atualizada com sucesso",
+      atualizado: atualizacoes,
     });
-    
-    return response.status(200).json({ message: 'Turma atualizada com sucesso' });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return response.status(400).json({ message: 'Dados inválidos', errors: error.errors });
+      return res
+        .status(400)
+        .json({ message: "Dados inválidos", errors: error.errors });
     }
-    return response.status(500).json({ message: 'Erro no servidor' });
+    console.error("Erro ao atualizar turma:", error);
+    return res.status(500).json({ message: "Erro no servidor" });
   }
 }
 
-// Função para excluir uma turma (método DELETE)
-// Em vez de remover o item diretamente, a função filtra o array de turmas e regrava o array sem buracos.
-async function handleDelete(request: NextApiRequest, response: NextApiResponse) {
+// DELETE => exclui turma
+async function handleDelete(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // Valida os dados recebidos para exclusão
-    const { modalidade, uuidTurma } = deleteTurmaSchema.parse(request.body);
-    
-    // Obtém a referência para todas as turmas da modalidade
-    const turmasReference = database.ref(`modalidades/${modalidade}/turmas`);
-    const snapshot = await turmasReference.once('value');
-    
-    if (!snapshot.exists()) {
-      return response.status(404).json({ message: 'Nenhuma turma encontrada para esta modalidade' });
+    const { uuidTurma, modalidade } = deleteTurmaSchema.parse(req.body);
+
+    const turmasRef = database.ref(`modalidades/${modalidade}/turmas`);
+    const snap = await turmasRef.once("value");
+    if (!snap.exists()) {
+      return res
+        .status(404)
+        .json({ message: "Nenhuma turma encontrada para esta modalidade" });
     }
-    
-    // Converte os dados obtidos para um array, tratando tanto arrays quanto objetos
-    const turmasData = snapshot.val();
-    let arrayDeTurmas: any[] = Array.isArray(turmasData) ? turmasData : Object.values(turmasData);
-    
-    // Cria um novo array filtrando a turma com o uuidTurma especificado e removendo itens nulos
-    const novoArrayDeTurmas = arrayDeTurmas.filter((turma) => {
-      if (!turma) {
-        return false;
-      }
+
+    const turmasData = snap.val();
+    let arrayDeTurmas: any[] = [];
+    if (Array.isArray(turmasData)) {
+      arrayDeTurmas = turmasData;
+    } else {
+      arrayDeTurmas = Object.values(turmasData);
+    }
+
+    const novoArray = arrayDeTurmas.filter((turma) => {
+      if (!turma) return false;
       return turma.uuidTurma !== uuidTurma;
     });
-    
-    // Regrava o array atualizado no banco de dados
-    await turmasReference.set(novoArrayDeTurmas);
-    
-    return response.status(200).json({ message: 'Turma excluída com sucesso' });
+
+    await turmasRef.set(novoArray);
+    return res.status(200).json({ message: "Turma excluída com sucesso" });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return response.status(400).json({ message: 'Dados inválidos', errors: error.errors });
+      return res
+        .status(400)
+        .json({ message: "Dados inválidos", errors: error.errors });
     }
-    console.error('Erro ao remover turma:', error);
-    return response.status(500).json({ message: 'Erro no servidor' });
+    console.error("Erro ao remover turma:", error);
+    return res.status(500).json({ message: "Erro no servidor" });
   }
 }
