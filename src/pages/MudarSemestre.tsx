@@ -35,7 +35,7 @@ function chunkArray<T>(array: T[], chunkSize: number): T[][] {
 
 export default function AtualizarSemestre() {
   const { modalidades, fetchModalidades } = useContext(DataContext);
-  const [ano, setAno] = useState<number>(2024);
+  const [ano, setAno] = useState<number>(2025);
   const [semestre, setSemestre] = useState<'primeiro' | 'segundo'>('primeiro');
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);

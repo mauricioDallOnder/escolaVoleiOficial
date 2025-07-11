@@ -210,7 +210,7 @@ export function gerarPresencasParaAluno(diaDaSemana: string): Presencas {
         diasDaSemana[diaDaSemana.toUpperCase()]
       );
       dias.forEach((data) => {
-        presencas[nomeMes][data] = false;
+        presencas[nomeMes][data] = true;
       });
     }
   } else {
