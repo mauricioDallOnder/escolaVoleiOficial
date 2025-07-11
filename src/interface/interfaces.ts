@@ -119,7 +119,8 @@ export interface Turma {
   capacidade_atual_da_turma: number;
   alunos: Aluno[];
   uuidTurma?: string;
-  diaDaSemana?: string;
+  // **CORREÇÃO 1:** diaDaSemana é um array de strings, não uma string opcional.
+  diaDaSemana: string[]; 
   horario?: string;
 }
 
@@ -181,7 +182,8 @@ export interface AdminPageProps {
 
 // Exemplo de "aluno"
 export interface AlunoParaForm {
-  alunoId: number;
+  // **CORREÇÃO 2:** alunoId agora aceita string ou number para ser flexível.
+  alunoId: number | string;
   id: number;
   nome: string;
   anoNascimento: string;
@@ -191,10 +193,12 @@ export interface AlunoParaForm {
   presencas: Presencas;
   foto: string;
 }
+
 // A interface final do form
 export interface FormValuesStudent {
   aluno: AlunoParaForm;
   turmaSelecionada: string;
+  modalidade: string; // Adicionado para consistência
 }
 
 export interface ModalidadesData {
