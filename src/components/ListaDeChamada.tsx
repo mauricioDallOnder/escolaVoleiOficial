@@ -24,6 +24,39 @@ import { ListaDeChamadaModal } from "./ListaDeChamadaModal";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import ControleFrequenciaTableProfessor from "./ProfessorListaGeralDeFaltas";
 
+// FUNÇÃO AUXILIAR 1: Gera dinamicamente a lista de meses disponíveis a partir dos dados dos alunos.
+const getAvailableMonths = (alunos: Aluno[]): string[] => {
+  const monthSet = new Set<string>();
+  alunos.forEach(aluno => {
+    if (aluno?.presencas) {
+      Object.keys(aluno.presencas).forEach(month => monthSet.add(month));
+    }
+  });
+
+  // Define a ordem correta dos meses para o ano letivo.
+  const monthOrder = ["fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro", "janeiro"];
+  return Array.from(monthSet).sort((a, b) => monthOrder.indexOf(a) - monthOrder.indexOf(b));
+};
+
+// FUNÇÃO AUXILIAR 2: Gera dinamicamente a lista de dias para o mês selecionado, de forma segura.
+const getDaysForMonth = (alunos: Aluno[], month: string): string[] => {
+  if (!month) return [];
+  const daySet = new Set<string>();
+  alunos.forEach(aluno => {
+    // Acessa os dias do mês de forma segura.
+    if (aluno?.presencas?.[month]) {
+      Object.keys(aluno.presencas[month]).forEach(day => daySet.add(day));
+    }
+  });
+
+  // Ordena os dias pela data (número do dia).
+  return Array.from(daySet).sort((a, b) => {
+    const dayA = parseInt(a.split('-')[0], 10);
+    const dayB = parseInt(b.split('-')[0], 10);
+    return dayA - dayB;
+  });
+};
+
 export const ListaDeChamada: React.FC<Omit<StudentPresenceTableProps, "modalidade">> = ({
   alunosDaTurma,
   setAlunosDaTurma,
@@ -34,45 +67,68 @@ export const ListaDeChamada: React.FC<Omit<StudentPresenceTableProps, "modalidad
   const [selectedDay, setSelectedDay] = useState<string>("");
   const [selectedAluno, setSelectedAluno] = useState<Aluno | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [filteredAlunos, setFilteredAlunos] = useState<Aluno[]>([]);
   const [search, setSearch] = useState("");
-    // Estado para controle de frequência mensal
   const [openFreq, setOpenFreq] = useState<boolean>(false);
   const theme = useTheme();
   const isXs = useMediaQuery(theme.breakpoints.down("xs"));
 
-  const [alunosOrdenados, setAlunosOrdenados] = useState<Aluno[]>([]);
+  const availableMonths = getAvailableMonths(alunosDaTurma);
+  const daysInMonth = getDaysForMonth(alunosDaTurma, selectedMonth);
 
   useEffect(() => {
-    const alunosOrdenados = [...alunosDaTurma]
-      .filter(Boolean)
-      .sort((a, b) => a.nome.localeCompare(b.nome));
-    setAlunosOrdenados(alunosOrdenados);
-  }, [alunosDaTurma]);
+    setSelectedDay("");
+  }, [selectedMonth]);
+  
+  useEffect(() => {
+    if (availableMonths.length > 0 && !availableMonths.includes(selectedMonth)) {
+      setSelectedMonth(availableMonths[0] || "");
+    } else if (availableMonths.length === 0) {
+      setSelectedMonth("");
+    }
+  }, [availableMonths, selectedMonth]);
 
-  const tableContainerStyles = {
-    marginTop: 2,
-    marginBottom: 2,
-    overflowX: "auto",
-    maxWidth: "100%",
-    ...(isXs && {
-      "& .MuiTableCell-sizeSmall": {
-        padding: "6px 8px",
-      },
-      "& .MuiTypography-root": {
-        fontSize: "0.75rem",
-      },
-    }),
+  const alunosOrdenados = React.useMemo(() => 
+    [...alunosDaTurma]
+      .filter(Boolean)
+      .sort((a, b) => a.nome.localeCompare(b.nome)),
+  [alunosDaTurma]);
+
+  const filteredAlunos = React.useMemo(() =>
+    alunosOrdenados.filter((aluno) =>
+      aluno.nome.toLowerCase().includes(search.toLowerCase())
+    ), [alunosOrdenados, search]);
+
+  const toggleAttendance = (alunoId: number, day: string) => {
+    setAlunosDaTurma((current) =>
+      current.map((student) => {
+        if (student?.id === alunoId && student.presencas?.[selectedMonth]?.[day] !== undefined) {
+          const updatedAttendance = {
+            ...student.presencas,
+            [selectedMonth]: {
+              ...student.presencas[selectedMonth],
+              [day]: !student.presencas[selectedMonth][day],
+            },
+          };
+          const alunoUpdateData = {
+            ...student,
+            alunoId: alunoId.toString(),
+            presencas: updatedAttendance,
+            nomeDaTurma: nomeDaTurma,
+          };
+          updateAttendanceInApi(alunoUpdateData);
+          return { ...student, presencas: updatedAttendance };
+        }
+        return student;
+      })
+    );
   };
 
-  const daysInMonth =
-    alunosDaTurma.length > 0
-      ? Object.keys(
-          alunosDaTurma.find((aluno) => aluno !== null)?.presencas[
-            selectedMonth
-          ] || {}
-        )
-      : [];
+  const countPresentStudents = () => {
+    return alunosDaTurma.reduce((count, aluno) => {
+      const isPresent = aluno?.presencas?.[selectedMonth]?.[selectedDay];
+      return count + (isPresent ? 1 : 0);
+    }, 0);
+  };
 
   const handleOpenModal = (aluno: Aluno) => {
     setSelectedAluno(aluno);
@@ -88,59 +144,6 @@ export const ListaDeChamada: React.FC<Omit<StudentPresenceTableProps, "modalidad
     setSearch(event.target.value);
   };
 
-  const filteredAlunosFind = alunosOrdenados.filter((aluno) =>
-    aluno.nome.toLowerCase().includes(search.toLowerCase())
-  );
-
-  useEffect(() => {
-    const searchTermLowercased = search.toLowerCase();
-    const filtered = filteredAlunosFind.filter((aluno) =>
-      aluno.nome.toLowerCase().includes(searchTermLowercased) ||
-      nomeDaTurma.toLowerCase().includes(searchTermLowercased)
-    );
-    setFilteredAlunos(filtered);
-  }, [search, filteredAlunosFind, nomeDaTurma]);
-
-  const toggleAttendance = (alunoId: number, day: string) => {
-    setAlunosDaTurma((current) =>
-      current.map((student) => {
-        if (student !== null && student.id === alunoId) {
-          const updatedAttendance = {
-            ...student.presencas,
-            [selectedMonth]: {
-              ...student.presencas[selectedMonth],
-              [day]: !student.presencas[selectedMonth][day],
-            },
-          };
-
-          // Atualização dos dados do aluno sem a propriedade "modalidade"
-          const alunoUpdateData = {
-            ...student,
-            alunoId: alunoId.toString(),
-            presencas: updatedAttendance,
-            nomeDaTurma: nomeDaTurma, // Adicionado
-          };
-
-          updateAttendanceInApi(alunoUpdateData);
-
-          return { ...student, presencas: updatedAttendance };
-        }
-        return student;
-      })
-    );
-  };
-
-  const countPresentStudents = () => {
-    return alunosDaTurma.reduce((count, aluno) => {
-      const isPresent =
-        aluno &&
-        aluno.presencas &&
-        aluno.presencas[selectedMonth] &&
-        aluno.presencas[selectedMonth][selectedDay];
-      return count + (isPresent ? 1 : 0);
-    }, 0);
-  };
-
   const isAvisoValid = (aluno: Aluno) => {
     if (aluno.avisos && aluno.avisos.IsActive) {
       const avisoDate = new Date(aluno.avisos.dataaviso);
@@ -149,6 +152,17 @@ export const ListaDeChamada: React.FC<Omit<StudentPresenceTableProps, "modalidad
       return avisoDate >= today;
     }
     return false;
+  };
+
+  const tableContainerStyles = {
+    marginTop: 2,
+    marginBottom: 2,
+    overflowX: "auto",
+    maxWidth: "100%",
+    ...(isXs && {
+      "& .MuiTableCell-sizeSmall": { padding: "6px 8px" },
+      "& .MuiTypography-root": { fontSize: "0.75rem" },
+    }),
   };
 
   return (
@@ -164,44 +178,22 @@ export const ListaDeChamada: React.FC<Omit<StudentPresenceTableProps, "modalidad
             {selectedAluno && (
               <>
                 {isAvisoValid(selectedAluno) && selectedAluno.avisos && (
-                  <Box
-                    sx={{
-                      backgroundColor: "#ffd700",
-                      padding: "8px",
-                      marginBottom: "16px",
-                    }}
-                  >
-                    
+                  <Box sx={{ backgroundColor: "#ffd700", padding: "8px", marginBottom: "16px" }}>
                     <Typography variant="body1" sx={{ fontWeight: "bold" }}>
                       Aviso: {selectedAluno.avisos.textaviso}
                     </Typography>
                   </Box>
                 )}
                 <ListaDeChamadaModal aluno={selectedAluno} month={selectedMonth} />
-                
               </>
             )}
             <Box sx={{ backgroundColor: "red" }}>
-              <Typography
-                sx={{
-                  color: "black",
-                  fontWeight: "bold",
-                  textAlign: "center",
-                  padding: "5px",
-                }}
-              >
+              <Typography sx={{ color: "black", fontWeight: "bold", textAlign: "center", padding: "5px" }}>
                 Telefone para Emergência: {selectedAluno?.telefone_contato_emergencia}
               </Typography>
             </Box>
             <Box sx={{ backgroundColor: "red" }}>
-              <Typography
-                sx={{
-                  color: "black",
-                  fontWeight: "bold",
-                  textAlign: "center",
-                  padding: "5px",
-                }}
-              >
+              <Typography sx={{ color: "black", fontWeight: "bold", textAlign: "center", padding: "5px" }}>
                 Nome do contato para Emergência : {selectedAluno?.nome_contato_emergencia}
               </Typography>
             </Box>
@@ -215,18 +207,11 @@ export const ListaDeChamada: React.FC<Omit<StudentPresenceTableProps, "modalidad
           onChange={(e) => setSelectedMonth(e.target.value)}
           fullWidth
         >
-          <MenuItem value="janeiro">Janeiro</MenuItem>
-          <MenuItem value="fevereiro">Fevereiro</MenuItem>
-          <MenuItem value="março">Março</MenuItem>
-          <MenuItem value="abril">Abril</MenuItem>
-          <MenuItem value="maio">Maio</MenuItem>
-          <MenuItem value="junho">Junho</MenuItem>
-          <MenuItem value="julho">Julho</MenuItem>
-          <MenuItem value="agosto">Agosto</MenuItem>
-          <MenuItem value="setembro">Setembro</MenuItem>
-          <MenuItem value="outubro">Outubro</MenuItem>
-          <MenuItem value="novembro">Novembro</MenuItem>
-          <MenuItem value="dezembro">Dezembro</MenuItem>
+          {availableMonths.map((month) => (
+            <MenuItem key={month} value={month}>
+              {month.charAt(0).toUpperCase() + month.slice(1)}
+            </MenuItem>
+          ))}
         </TextField>
 
         {selectedMonth && (
@@ -253,7 +238,6 @@ export const ListaDeChamada: React.FC<Omit<StudentPresenceTableProps, "modalidad
           value={search}
           onChange={handleSearchChange}
         />
-        {/* Botão de Frequência Mensal */}
         {selectedMonth && (
           <Box sx={{ mt: 2, textAlign: 'center' }}>
             <Button variant="contained" color='secondary' onClick={() => setOpenFreq(true)}>
@@ -268,53 +252,17 @@ export const ListaDeChamada: React.FC<Omit<StudentPresenceTableProps, "modalidad
               borderAxis="both"
               size="sm"
               aria-label="tabela de presença"
-              sx={{
-                minWidth: 245,
-                "& th, & td": {
-                  fontSize: isXs ? "0.75rem" : "0.75rem",
-                  padding: isXs ? "8px" : "16px",
-                },
-                "& tr": {
-                  height: isXs ? "40px" : "60px",
-                },
-                "& thead th": {
-                  fontWeight: "bold",
-                  backgroundColor: "#eceff1",
-                },
-                "& tbody tr:nth-of-type(odd)": {
-                  backgroundColor: "rgba(247, 247, 247, 1)",
-                },
-              }}
+              sx={{ minWidth: 245, "& th, & td": { fontSize: isXs ? "0.75rem" : "0.75rem", padding: isXs ? "8px" : "16px" }, "& tr": { height: isXs ? "40px" : "60px" }, "& thead th": { fontWeight: "bold", backgroundColor: "#eceff1" }, "& tbody tr:nth-of-type(odd)": { backgroundColor: "rgba(247, 247, 247, 1)" } }}
             >
               <TableHead>
                 <TableRow>
-                  <TableCell
-                    sx={{
-                      fontWeight: "bold",
-                      backgroundColor: "#eceff1",
-                      textAlign: "center",
-                    }}
-                  >
+                  <TableCell sx={{ fontWeight: "bold", backgroundColor: "#eceff1", textAlign: "center" }}>
                     Nome do Aluno
                   </TableCell>
-                  <TableCell
-                    align="center"
-                    sx={{
-                      fontWeight: "bold",
-                      backgroundColor: "#eceff1",
-                      textAlign: "center",
-                    }}
-                  >
+                  <TableCell align="center" sx={{ fontWeight: "bold", backgroundColor: "#eceff1", textAlign: "center" }}>
                     Frequência
                   </TableCell>
-                  <TableCell
-                    align="center"
-                    sx={{
-                      fontWeight: "bold",
-                      backgroundColor: "#eceff1",
-                      textAlign: "center",
-                    }}
-                  >
+                  <TableCell align="center" sx={{ fontWeight: "bold", backgroundColor: "#eceff1", textAlign: "center" }}>
                     Exibir Informações do Atleta
                   </TableCell>
                 </TableRow>
@@ -322,68 +270,35 @@ export const ListaDeChamada: React.FC<Omit<StudentPresenceTableProps, "modalidad
               <TableBody>
                 {filteredAlunos.map((aluno) => {
                   const hasValidAviso = isAvisoValid(aluno);
+                  const isPresent = aluno?.presencas?.[selectedMonth]?.[selectedDay];
                   return (
-                    <TableRow
-                      key={aluno.nome}
-                      sx={{
-                        "& > *": { borderBottom: "unset" },
-                        backgroundColor: hasValidAviso ? "#ffeb3b" : "inherit",
-                      }}
-                    >
+                    <TableRow key={aluno.nome} sx={{ "& > *": { borderBottom: "unset" }, backgroundColor: hasValidAviso ? "#ffeb3b" : "inherit" }}>
                       {hasValidAviso ? (
-                        <TableCell
-                          sx={{
-                            backgroundColor: "inherit",
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "4px",
-                            }}
-                          >
+                        <TableCell sx={{ backgroundColor: "inherit" }}>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: "4px" }}>
                             <WarningAmberIcon color="error" />
-                            <Typography
-                              sx={{
-                                color: "red",
-                                fontWeight: "bold",
-                              }}
-                            >
+                            <Typography sx={{ color: "red", fontWeight: "bold" }}>
                               {aluno.nome}
                             </Typography>
                             <WarningAmberIcon color="error" />
                           </Box>
                         </TableCell>
                       ) : (
-                        <TableCell
-                          sx={{
-                            fontWeight: "bold",
-                            color: "inherit",
-                          }}
-                        >
+                        <TableCell sx={{ fontWeight: "bold", color: "inherit" }}>
                           {aluno.nome}
                         </TableCell>
                       )}
 
                       <TableCell
                         align="center"
-                        sx={{ color: "black", fontWeight: "bold" }}
+                        sx={{ color: "black", fontWeight: "bold", cursor: "pointer" }}
                         onClick={() => toggleAttendance(aluno.id, selectedDay)}
                       >
-                        {aluno.presencas[selectedMonth][selectedDay] ? "." : "F"}
+                        {isPresent === true ? "." : isPresent === false ? "F" : "-"}
                       </TableCell>
-                      <TableCell onClick={() => handleOpenModal(aluno)}>
+                      <TableCell align="center" onClick={() => handleOpenModal(aluno)}>
                         <Button
-                          sx={{
-                            width: "fit-content",
-                            fontSize: "12px",
-                            backgroundColor: hasValidAviso ? "#d32f2f" : "#1976d2",
-                            color: "white",
-                            "&:hover": {
-                              backgroundColor: hasValidAviso ? "#b71c1c" : "#1565c0",
-                            },
-                          }}
+                          sx={{ width: "fit-content", fontSize: "12px", backgroundColor: hasValidAviso ? "#d32f2f" : "#1976d2", color: "white", "&:hover": { backgroundColor: hasValidAviso ? "#b71c1c" : "#1565c0" } }}
                           variant="contained"
                         >
                           {hasValidAviso ? "Ver Aviso" : "Ver Detalhes"}
@@ -399,13 +314,12 @@ export const ListaDeChamada: React.FC<Omit<StudentPresenceTableProps, "modalidad
       </Box>
       {selectedDay && (
         <Typography
-          sx={{ color: "black", fontWeight: "bold" }}
+          sx={{ color: "black", fontWeight: "bold", mt: 2 }}
           variant="subtitle1"
         >
           Número de alunos presentes: {countPresentStudents()}
         </Typography>
       )}
-       {/* Modal de Frequência Mensal */}
       <ControleFrequenciaTableProfessor
         isOpen={openFreq}
         onClose={() => setOpenFreq(false)}

@@ -22,9 +22,9 @@ import axios from 'axios';
 import { BoxStyleCadastro } from '@/utils/Styles';
 import ResponsiveAppBar from '@/components/TopBarComponents/TopBar';
 import ExportFaltasSemestre from '@/components/ExportFaltasDoSemestre/ExportFaltasDoSemestre';
+import { Aluno, Turma } from '@/interface/interfaces';
 
-// Função utilitária: divide um array em chunks de tamanho definido,
-// retornando o último chunk com os itens restantes (mesmo que menor).
+// Função para dividir um array em pedaços (chunks)
 function chunkArray<T>(array: T[], chunkSize: number): T[][] {
   const result: T[][] = [];
   for (let i = 0; i < array.length; i += chunkSize) {
@@ -35,61 +35,73 @@ function chunkArray<T>(array: T[], chunkSize: number): T[][] {
 
 export default function AtualizarSemestre() {
   const { modalidades, fetchModalidades } = useContext(DataContext);
-  const [ano, setAno] = useState<number>(2024);
+  const [ano, setAno] = useState<number>(new Date().getFullYear());
   const [semestre, setSemestre] = useState<'primeiro' | 'segundo'>('primeiro');
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [openConfirmation, setOpenConfirmation] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState<string>('');
 
-  // Buscar modalidades ao carregar o componente
   useEffect(() => {
-    const fetchData = async () => {
-      await fetchModalidades();
-      setIsLoading(false);
-    };
-    fetchData();
+    fetchModalidades().finally(() => setIsLoading(false));
   }, [fetchModalidades]);
 
   const handleAtualizarPresencas = async () => {
-    if (isLoading || isProcessing) {
-      return;
-    }
+    if (isLoading || isProcessing) return;
 
     setIsProcessing(true);
     setOpenConfirmation(false);
+    setProcessingStatus('Iniciando atualização...');
 
-    // Para cada modalidade, dividimos as turmas em lotes de 10 e atualizamos
-    for (const modalidade of modalidades) {
-      const lotesDeTurmas = chunkArray(modalidade.turmas, 10);
-      for (const lote of lotesDeTurmas) {
-        try {
-          const response = await axios.post('/api/TrocarSemestre', {
-            ano,
-            semestre,
-            modalidade: { ...modalidade, turmas: lote },
-          });
-          if (response.status === 200) {
-            console.log(`Presenças da modalidade ${modalidade.nome} atualizadas com sucesso!`);
-          } else {
-            console.error(`Erro ao atualizar presenças da modalidade ${modalidade.nome}.`);
+    try {
+      for (const modalidade of modalidades) {
+        let turmaCount = 0;
+        for (const turma of modalidade.turmas) {
+          turmaCount++;
+
+          // Divide os alunos desta turma em lotes de 5
+          const lotesDeAlunos = chunkArray(turma.alunos, 5);
+          
+          let loteCount = 0;
+          for (const lote of lotesDeAlunos) {
+            loteCount++;
+            const statusMessage = `Turma ${turmaCount}/${modalidade.turmas.length}: Processando lote de alunos ${loteCount}/${lotesDeAlunos.length}`;
+            console.log(statusMessage, `(${turma.nome_da_turma})`);
+            setProcessingStatus(statusMessage);
+
+            // Cria um payload com a turma, mas SÓ com o lote atual de alunos
+            const turmaComLoteDeAlunos = { ...turma, alunos: lote };
+
+            const payload = {
+              ano,
+              semestre,
+              modalidade: { 
+                id: modalidade.nome, 
+                turmas: [turmaComLoteDeAlunos] // Envia um array com a turma contendo apenas o lote de alunos
+              },
+            };
+            
+            await axios.post('/api/TrocarSemestre', payload, { timeout: 60000 });
           }
-        } catch (error) {
-          console.error(`Erro ao atualizar presenças da modalidade ${modalidade.nome}:`, error);
         }
       }
+
+      setProcessingStatus('Finalizando e buscando dados atualizados...');
+      await fetchModalidades();
+      alert("Semestre atualizado com sucesso para todas as turmas!");
+
+    } catch (error) {
+      console.error("ERRO CRÍTICO no frontend!", error);
+      const errorMessage = axios.isAxiosError(error) ? error.response?.data?.message || error.message : "Um erro inesperado ocorreu.";
+      alert(`Erro: ${errorMessage}`);
+    } finally {
+      setIsProcessing(false);
+      setProcessingStatus('');
     }
-
-    setIsProcessing(false);
-    alert("Presenças atualizadas com sucesso!");
   };
 
-  const handleOpenConfirmation = () => {
-    setOpenConfirmation(true);
-  };
-
-  const handleCloseConfirmation = () => {
-    setOpenConfirmation(false);
-  };
+  const handleOpenConfirmation = () => setOpenConfirmation(true);
+  const handleCloseConfirmation = () => setOpenConfirmation(false);
 
   return (
     <>
@@ -100,7 +112,7 @@ export default function AtualizarSemestre() {
             Atualização de Semestre
           </Typography>
           <Typography variant="body1" sx={{ mb: 4, color: "red" }}>
-            Certifique-se de ter salvo os dados atuais antes de proceder, pois esta operação substituirá o semestre inteiro em todas as turmas, apagando as presenças anteriores!
+            Atenção: Esta operação irá substituir TODAS as presenças do semestre atual.
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
             <TextField
@@ -110,7 +122,6 @@ export default function AtualizarSemestre() {
               onChange={(e) => setAno(parseInt(e.target.value, 10))}
             />
             <Select
-              label="Semestre"
               value={semestre}
               onChange={(e) => setSemestre(e.target.value as 'primeiro' | 'segundo')}
             >
@@ -123,35 +134,34 @@ export default function AtualizarSemestre() {
             color="primary"
             onClick={handleOpenConfirmation}
             disabled={isLoading || isProcessing}
-            sx={{ position: 'relative' }}
+            sx={{ position: 'relative', width: '100%', mb: 2 }}
           >
             {isProcessing ? "Atualizando..." : "Trocar o Semestre!"}
             {isProcessing && (
               <CircularProgress
                 size={24}
-                sx={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  marginTop: '-12px',
-                  marginLeft: '-12px',
-                }}
+                sx={{ position: 'absolute', top: '50%', left: '50%', marginTop: '-12px', marginLeft: '-12px' }}
               />
             )}
           </Button>
+          {isProcessing && (
+            <Typography variant="body2" sx={{ color: 'primary.main', textAlign: 'center' }}>
+              {processingStatus}
+            </Typography>
+          )}
           <Dialog open={openConfirmation} onClose={handleCloseConfirmation}>
             <DialogTitle>Confirmação</DialogTitle>
             <DialogContent>
               <DialogContentText>
-                Esta operação substituirá o semestre inteiro em todas as turmas. Certifique-se de ter salvo os dados antes de prosseguir.
+                Tem certeza que deseja substituir os dados de presença pelo {semestre} semestre de {ano}?
               </DialogContentText>
             </DialogContent>
             <DialogActions>
-              <Button variant="contained" onClick={handleCloseConfirmation} color="error">
+              <Button variant="contained" onClick={handleCloseConfirmation} color="secondary">
                 Cancelar
               </Button>
-              <Button variant="contained" onClick={handleAtualizarPresencas} color="success" autoFocus>
-                Confirmar
+              <Button variant="contained" onClick={handleAtualizarPresencas} color="primary" autoFocus>
+                Confirmar e Atualizar
               </Button>
             </DialogActions>
           </Dialog>
@@ -165,7 +175,6 @@ export default function AtualizarSemestre() {
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const session = await getServerSession(context.req, context.res, authOptions);
 
-  // Se não tiver sessão ou não for admin, redirecione
   if (!session || session.user.role !== 'admin') {
     return {
       redirect: {

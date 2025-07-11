@@ -1,149 +1,85 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import admin from "../../config/firebaseAdmin";
+import { gerarPresencasSemestre } from '@/utils/Constants';
+import { Turma, Aluno } from "@/interface/interfaces";
 
-// Importe suas funções. Exemplo:
-//  - gerarPresencasParaAlunoSemestre(diaDaSemana, semestre, ano)
-//  - se precisar de extrairDiaDaSemana, mesclarPresencas, etc. Ajuste os caminhos:
-import {
-  gerarPresencasParaAlunoSemestre,
-  // extrairDiaDaSemana,  // só se for preciso
-} from "@/utils/Constants";
+// Aumenta o limite de tamanho do corpo do pedido para esta API específica.
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb', // Aumenta o limite para 10MB (pode ajustar se necessário)
+    },
+  },
+};
 
-const db = admin.database();
-
-/**
- * Função utilitária para "mesclar" (fazer merge) de objetos de presenças
- * gerados para cada dia da semana.
- */
-function mesclarPresencas(
-  base: Record<string, Record<string, boolean>>,
-  other: Record<string, Record<string, boolean>>
-): Record<string, Record<string, boolean>> {
-  for (const mes of Object.keys(other)) {
-    if (!base[mes]) {
-      base[mes] = {};
-    }
-    for (const dataStr of Object.keys(other[mes])) {
-      base[mes][dataStr] = other[mes][dataStr];
-    }
-  }
-  return base;
-}
-
-/**
- * Esta rota recebe via POST algo como:
- * {
- *   ano: 2025,
- *   semestre: "primeiro" | "segundo",
- *   modalidade: {
- *     nome: "volei",
- *     turmas: [...] // chunk de turmas
- *   }
- * }
- *
- * E para cada turma:
- * 1) Obtem a array `diaDaSemana` (ou fallback se for uma string).
- * 2) Gera as presenças do semestre para cada dia, mesclando.
- * 3) Atualiza todos os alunos dessa turma no Realtime Database,
- *    substituindo "presencas" anteriores.
- */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
-    return res.status(405).end("Method Not Allowed");
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'GET');
+    return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
-  // Espera-se que o body contenha { ano, semestre, modalidade: { nome, turmas } }
+  console.log("\n--- [TERMINAL LOG] API /api/TrocarSemestre RECEBEU UM PEDIDO ---");
   const { ano, semestre, modalidade } = req.body;
 
-  if (!modalidade || !ano || !semestre) {
-    return res
-      .status(400)
-      .json({ error: 'Dados incompletos. Exemplo de body: { ano, semestre, modalidade }' });
+  // --- VALIDAÇÃO DETALHADA ---
+  if (!ano) {
+    console.error("### FALHA NA VALIDAÇÃO: O campo 'ano' está em falta.");
+    return res.status(400).json({ message: "Dados inválidos: O campo 'ano' é obrigatório." });
   }
+  if (!semestre) {
+    console.error("### FALHA NA VALIDAÇÃO: O campo 'semestre' está em falta.");
+    return res.status(400).json({ message: "Dados inválidos: O campo 'semestre' é obrigatório." });
+  }
+  if (!modalidade || !modalidade.id || !modalidade.turmas) {
+    console.error("### FALHA NA VALIDAÇÃO: O objeto 'modalidade' está incompleto.");
+    return res.status(400).json({ message: "Dados inválidos: O objeto 'modalidade' deve conter 'id' e 'turmas'." });
+  }
+  
+  console.log("--- VALIDAÇÃO CONCLUÍDA COM SUCESSO. A processar os dados... ---");
+  const modalidadeNome = modalidade.id;
 
   try {
-    console.log("Processando modalidade:", modalidade.nome);
+    const db = admin.database();
+    const turmasRef = db.ref(`modalidades/${modalidadeNome}/turmas`);
+    const turmasSnapshot = await turmasRef.once('value');
+    const turmasDoBanco: (Turma | null)[] = turmasSnapshot.val() || [];
 
-    // Percorre cada turma da modalidade
-    for (const turma of modalidade.turmas) {
-      console.log("Processando turma:", turma.nome_da_turma);
+    const updates: { [key: string]: any } = {};
 
-      // Se a turma tiver array "diaDaSemana", usamos ela;
-      // se for apenas uma string "diaDaSemana", podemos fallback:
-      let arrayDeDias: string[];
-      if (Array.isArray(turma.diaDaSemana)) {
-        arrayDeDias = turma.diaDaSemana;
-      } else if (turma.diaDaSemana) {
-        // Se mantiver a lógica antiga de extrair do nome, use extrairDiaDaSemana:
-        // const diaExtraido = extrairDiaDaSemana(turma.nome_da_turma);
-        // arrayDeDias = [diaExtraido];
-        // Mas se "diaDaSemana" for direto, use:
-        arrayDeDias = [turma.diaDaSemana];
-      } else {
-        console.error("Não há dias da semana definidos para a turma:", turma.nome_da_turma);
+    for (const turmaDoPayload of modalidade.turmas) {
+      // Usamos findIndex para encontrar a posição da turma no array do banco de dados
+      const turmaIndexNoBanco = turmasDoBanco.findIndex(
+        (t) => t && t.uuidTurma === turmaDoPayload.uuidTurma
+      );
+
+      if (turmaIndexNoBanco === -1) {
+        console.warn(`[TERMINAL LOG] Aviso: Turma com UUID ${turmaDoPayload.uuidTurma} não encontrada no DB. Esta turma será ignorada.`);
         continue;
       }
 
-      // Gera presenças (true) para cada diaDaSemana e mescla num objeto final
-      let novasPresencas: Record<string, Record<string, boolean>> = {};
-      for (const diaDaSemana of arrayDeDias) {
-        // Gera as presenças para o semestre e ano solicitados
-        const presencasUmDia = gerarPresencasParaAlunoSemestre(
-          diaDaSemana.toUpperCase(),
-          semestre,
-          ano
-        );
-        // Faz merge no objeto "novasPresencas"
-        novasPresencas = mesclarPresencas(novasPresencas, presencasUmDia);
-      }
+      const novasPresencas = gerarPresencasSemestre(turmaDoPayload.diaDaSemana, semestre, ano);
 
-      // Agora "novasPresencas" tem as datas de todos os dias da semana daquela turma
-
-      // Busca a turma no Firebase
-      const turmaSnapshot = await db
-        .ref(`modalidades/${modalidade.nome}/turmas`)
-        .orderByChild("nome_da_turma")
-        .equalTo(turma.nome_da_turma)
-        .once("value");
-
-      const turmaData = turmaSnapshot.val();
-      if (!turmaData) {
-        console.error("Turma não encontrada no DB:", turma.nome_da_turma);
-        continue;
-      }
-
-      const turmaKey = Object.keys(turmaData)[0];
-      console.log("Turma encontrada com key:", turmaKey);
-
-      // Obtém os alunos como objeto
-      const alunosObj = turmaData[turmaKey].alunos || {};
-      console.log("Chaves dos alunos:", Object.keys(alunosObj));
-
-      // Atualiza cada aluno definindo "presencas" como "novasPresencas"
-      for (const alunoKey of Object.keys(alunosObj)) {
-        const aluno = alunosObj[alunoKey];
-        if (!aluno) continue;
-
-        console.log(
-          "Atualizando presenças para o aluno:",
-          aluno.nome,
-          "Chave:",
-          alunoKey
-        );
-        await db
-          .ref(
-            `modalidades/${modalidade.nome}/turmas/${turmaKey}/alunos/${alunoKey}`
-          )
-          .update({ presencas: novasPresencas });
+      if (turmaDoPayload.alunos && turmaDoPayload.alunos.length > 0) {
+        turmaDoPayload.alunos.forEach((_aluno: Aluno, indexDoAluno: number) => {
+          // Construímos o caminho exato para a propriedade 'presencas' de cada aluno
+          const path = `/modalidades/${modalidadeNome}/turmas/${turmaIndexNoBanco}/alunos/${indexDoAluno}/presencas`;
+          updates[path] = novasPresencas;
+        });
       }
     }
 
-    return res.status(200).json({ message: "Presenças atualizadas com sucesso!" });
-  } catch (error: any) {
-    console.error("Erro ao atualizar presenças:", error);
-    return res
-      .status(500)
-      .json({ error: error.message || "Erro ao atualizar presenças" });
+    if (Object.keys(updates).length > 0) {
+      console.log("[TERMINAL LOG] A preparar para atualizar o Firebase com os seguintes caminhos:", Object.keys(updates));
+      await db.ref().update(updates);
+      console.log("[TERMINAL LOG] Sucesso: O banco de dados foi atualizado.");
+    } else {
+      console.log("[TERMINAL LOG] Aviso: Nenhuma atualização foi preparada.");
+    }
+
+    res.status(200).json({ message: 'Operação de atualização de semestre concluída com sucesso!' });
+
+  } catch (error) {
+    console.error('[TERMINAL LOG] ERRO CRÍTICO no processamento da API:', error);
+    res.status(500).json({ message: 'Erro interno do servidor.', error: (error as Error).message });
   }
 }

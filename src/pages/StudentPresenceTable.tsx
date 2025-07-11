@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useForm, SubmitHandler } from "react-hook-form";
+import React, { useState, useEffect, useCallback, useContext } from "react";
 import {
   Box,
   Grid,
@@ -10,50 +9,62 @@ import {
   Container,
   Modal,
 } from "@mui/material";
-import { useData } from "@/context/context";
-import { Aluno, FormValuesStudent, Turma } from "@/interface/interfaces";
-import { BoxStyleFrequencia, ListStyle } from "@/utils/Styles";
-import { ListaDeChamada } from "@/components/ListaDeChamada";
+import Link from "next/link";
+import { GetServerSideProps } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "./api/auth/[...nextauth]";
-import { GetServerSideProps } from "next";
-import { HeaderForm } from "@/components/HeaderDefaultForm";
-import Layout from "@/components/TopBarComponents/Layout";
-import TemporaryStudentRegistration from "@/components/TemporaryStudents/StudentTemporaryModalRegistration";
-import Link from "next/link";
 
+import { DataContext } from "@/context/context"; // Corrigido para usar DataContext
+import { Aluno, Turma, FormValuesStudent } from "@/interface/interfaces";
+import { BoxStyleFrequencia, ListStyle } from "@/utils/Styles";
+import Layout from "@/components/TopBarComponents/Layout";
+import { HeaderForm } from "@/components/HeaderDefaultForm";
+import { ListaDeChamada } from "@/components/ListaDeChamada";
+import TemporaryStudentRegistration from "@/components/TemporaryStudents/StudentTemporaryModalRegistration";
+
+// O nome do componente continua o mesmo do seu arquivo original
 export default function StudentPresenceTable() {
-  const { modalidades, fetchModalidades } = useData();
-  const { handleSubmit, setValue } = useForm<FormValuesStudent>({
-    defaultValues: {
-      turmaSelecionada: "",
-    },
-  });
+  // O hook foi renomeado para 'useContext(DataContext)' para refletir o uso padrão
+  const { modalidades, fetchModalidades } = useContext(DataContext);
+  
   const [turmasDisponiveis, setTurmasDisponiveis] = useState<Turma[]>([]);
   const [selectedTurma, setSelectedTurma] = useState<string>("");
   const [alunosDaTurma, setAlunosDaTurma] = useState<Aluno[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Buscar modalidades ao montar o componente
+  // Busca as modalidades ao carregar a página
   useEffect(() => {
     fetchModalidades().catch(console.error);
   }, [fetchModalidades]);
 
-  // Como só existe uma modalidade, usamos a primeira para obter as turmas disponíveis
+  // Atualiza a lista de turmas disponíveis quando as modalidades são carregadas
   useEffect(() => {
     if (modalidades && modalidades.length > 0) {
-      const firstModalidade = modalidades[0];
-      setTurmasDisponiveis(firstModalidade.turmas);
+      // Assume que todas as turmas estão na primeira modalidade, como no código original
+      const todasAsTurmas = modalidades[0]?.turmas || [];
+      setTurmasDisponiveis(todasAsTurmas);
     }
   }, [modalidades]);
 
+  // Função para lidar com a mudança da turma selecionada
   const handleTurmaChange = useCallback(
     (event: React.ChangeEvent<{ value: unknown }>) => {
-      const value = event.target.value as string;
-      setSelectedTurma(value);
-      setValue("turmaSelecionada", value);
+      const nomeDaTurmaSelecionada = event.target.value as string;
+      setSelectedTurma(nomeDaTurmaSelecionada);
+
+      // Encontra a turma completa a partir do nome selecionado
+      const turmaEscolhida = turmasDisponiveis.find(
+        (t) => t.nome_da_turma === nomeDaTurmaSelecionada
+      );
+
+      // Define os alunos da turma no estado, ou um array vazio se não encontrar
+      if (turmaEscolhida?.alunos) {
+        setAlunosDaTurma(turmaEscolhida.alunos);
+      } else {
+        setAlunosDaTurma([]);
+      }
     },
-    [setValue]
+    [turmasDisponiveis] // Depende da lista de turmas disponíveis
   );
 
   const handleOpenModal = () => {
@@ -64,49 +75,33 @@ export default function StudentPresenceTable() {
     setIsModalOpen(false);
   };
 
-  const onSubmit: SubmitHandler<FormValuesStudent> = async (data) => {
-    const turmaEscolhida =
-      modalidades && modalidades[0]?.turmas.find(
-        (t) => t.nome_da_turma === data.turmaSelecionada
-      );
-
-    if (turmaEscolhida && Array.isArray(turmaEscolhida.alunos)) {
-      setAlunosDaTurma(turmaEscolhida.alunos);
-    }
-  };
-
-  const refreshPage = () => {
-    alert("Dados salvos com sucesso");
-    window.location.reload();
-  };
-
-  // Nome da modalidade única (se houver)
-  const singleModalidadeName =
-    modalidades && modalidades.length > 0 ? modalidades[0].nome : "";
-
   return (
     <Layout>
       <Container>
-        <form onSubmit={handleSubmit(onSubmit)}>
+        {/* O formulário não precisa mais de um 'onSubmit' pois a ação é automática */}
+        <form>
           <Box sx={BoxStyleFrequencia}>
             <HeaderForm titulo={"Lista de Chamada"} />
             <List sx={ListStyle}>
               <Grid container spacing={2}>
-                {/* Campo para selecionar a turma */}
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12}>
                   <TextField
                     select
                     required
-                    label="Turma"
+                    label="Selecione a Turma"
                     value={selectedTurma}
                     onChange={handleTurmaChange}
                     fullWidth
                     variant="outlined"
+                    helperText="A lista de chamada será carregada automaticamente."
                     sx={{ marginBottom: 2 }}
                   >
+                    <MenuItem value="" disabled>
+                      <em>Nenhuma turma selecionada</em>
+                    </MenuItem>
                     {turmasDisponiveis.map((turma) => (
                       <MenuItem
-                        key={turma.nome_da_turma}
+                        key={turma.uuidTurma} // Usar uma chave única como uuid é mais seguro
                         value={turma.nome_da_turma}
                       >
                         {turma.nome_da_turma}
@@ -116,7 +111,8 @@ export default function StudentPresenceTable() {
                 </Grid>
               </Grid>
 
-              {alunosDaTurma.length > 0 && (
+              {/* A ListaDeChamada é renderizada se uma turma for selecionada e tiver alunos */}
+              {selectedTurma && (
                 <ListaDeChamada
                   alunosDaTurma={alunosDaTurma}
                   setAlunosDaTurma={setAlunosDaTurma}
@@ -124,39 +120,35 @@ export default function StudentPresenceTable() {
                 />
               )}
             </List>
-            <Button
-              sx={{ width: "100%", marginBottom: "8px" }}
-              type="submit"
-              variant="contained"
-            >
-              Pesquisar Turma
-            </Button>
-            <Button
-              sx={{ fontSize: "12px" }}
-              color="error"
-              variant="contained"
-              onClick={handleOpenModal}
-            >
-              Adicionar aluno temporário
-            </Button>
-         <Button
-      component={Link}               // <- usa o Link do Next.js como componente
-      href="/ListaDeAlunosParaProfs" // <- rota para onde vai
-      sx={{ fontSize: '12px', mt: 1 }}
-      color="secondary"
-      variant="contained"
-    >
-      Acessar lista Geral de Alunos
-    </Button>
-           
+            
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 2 }}>
+              <Button
+                color="error"
+                variant="contained"
+                onClick={handleOpenModal}
+              >
+                Adicionar aluno temporário
+              </Button>
+              
+              <Button
+                component={Link}
+                href="/ListaDeAlunosParaProfs"
+                color="secondary"
+                variant="contained"
+              >
+                Acessar lista Geral de Alunos
+              </Button>
+            </Box>
+
           </Box>
         </form>
+        
         <Modal
           open={isModalOpen}
           onClose={handleCloseModal}
-          aria-labelledby="modal-title"
-          aria-describedby="modal-description"
+          aria-labelledby="modal-adicionar-aluno-temporario"
         >
+          {/* O componente do modal recebe a função para fechá-lo */}
           <TemporaryStudentRegistration handleCloseModal={handleCloseModal} />
         </Modal>
       </Container>
@@ -171,7 +163,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     authOptions
   );
 
-  // Permitir acesso se o usuário for admin ou professor
+  // A lógica de permissão continua a mesma
   if (
     !session ||
     (session.user.role !== "admin" && session.user.role !== "professor")
