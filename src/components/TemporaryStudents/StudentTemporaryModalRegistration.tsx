@@ -8,30 +8,30 @@ import {
   Typography,
   MenuItem,
   Paper,
-  Snackbar
+  Snackbar,
 } from "@mui/material";
 import { v4 as uuidv4 } from "uuid";
-import {
-  TituloSecaoStyle,
-  modalStyleTemporaly,
-} from "@/utils/Styles";
+import { TituloSecaoStyle, modalStyleTemporaly } from "@/utils/Styles";
 
-// 1. IMPORTAÇÃO ATUALIZADA: Trocamos a função antiga pela nova.
-import { gerarPresencasSemestre } from "@/utils/Constants";
+// 1. IMPORTAÇÃO ATUALIZADA: Usamos a função correta para gerar presenças.
+import { extrairDiaDaSemana, gerarPresencasParaAluno } from "@/utils/Constants";
 
 // Importamos o contexto e tipos necessários
 import { useData } from "@/context/context";
-import { FormValuesStudent, Turma } from "@/interface/interfaces";
+import { FormValuesStudent, Turma, AlunoParaForm } from "@/interface/interfaces";
 
-// Se você precisa corrigir dados após cadastrar, mantenha; senão pode remover
+// A função de corrigir dados é mantida, pois é útil após o cadastro.
 import { CorrigirDadosDefinitivos } from "@/utils/CorrigirDadosTurmasEmComponetes";
 
-// Propriedades do componente
+// Tipagem para o formulário local
+type LocalFormValues = {
+  turmaSelecionada: string;
+};
+
 interface TemporaryStudentRegistrationProps {
   handleCloseModal: () => void;
 }
 
-// Componente principal
 export default function TemporaryStudentRegistration({
   handleCloseModal,
 }: TemporaryStudentRegistrationProps) {
@@ -39,8 +39,8 @@ export default function TemporaryStudentRegistration({
     register,
     handleSubmit,
     reset,
-    formState: { isSubmitting },
-  } = useForm<FormValuesStudent>();
+    formState: { isSubmitting, errors },
+  } = useForm<LocalFormValues>(); // Usamos um tipo local para o formulário simples
 
   const { modalidades, fetchModalidades, sendDataToApi } = useData();
 
@@ -49,54 +49,42 @@ export default function TemporaryStudentRegistration({
   const [isUpdating, setIsUpdating] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Efeito para carregar as turmas da modalidade "volei" ao montar o componente
   useEffect(() => {
-    // Carrega as turmas quando o componente é montado
     fetchModalidades().then((mods) => {
-      const modalidadeVolei = mods.find(m => m.nome.toLowerCase() === 'volei');
+      const modalidadeVolei = mods.find((mod) => mod.nome.toLowerCase() === "volei");
       if (modalidadeVolei?.turmas) {
         setTurmasDisponiveis(modalidadeVolei.turmas);
       }
     });
   }, [fetchModalidades]);
 
-  const handleStudentNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setStudentName(event.target.value);
-  };
-
-  const onFormSubmit: SubmitHandler<FormValuesStudent> = async (formData) => {
+  const onFormSubmit: SubmitHandler<LocalFormValues> = async (data) => {
     setIsUpdating(true);
-    
+
     const turmaEncontrada = turmasDisponiveis.find(
-      (turma) => turma.nome_da_turma === formData.turmaSelecionada
+      (turma) => turma.nome_da_turma === data.turmaSelecionada
     );
 
-    if (!turmaEncontrada) {
-      console.error("Turma selecionada não foi encontrada.");
+    if (!turmaEncontrada || !turmaEncontrada.diaDaSemana) {
+      alert("Erro: A turma selecionada não foi encontrada ou não possui dias de aula definidos.");
       setIsUpdating(false);
       return;
     }
 
-    // 2. LÓGICA ATUALIZADA: Determinamos o ano e semestre atuais.
-    const currentDate = new Date();
-    const anoAtual = currentDate.getFullYear();
-    // (Janeiro=0 a Junho=5 são o primeiro semestre)
-    const semestreAtual = currentDate.getMonth() < 6 ? 'primeiro' : 'segundo';
-    
-    // 3. GERAÇÃO DE PRESENÇAS ATUALIZADA: Usamos a nova função.
-    const presencasGeradas = gerarPresencasSemestre(
-      turmaEncontrada.diaDaSemana,
-      semestreAtual,
-      anoAtual
-    );
+    // 2. LÓGICA ATUALIZADA: Determinamos ano e semestre para a nova função
+     const currentDate = new Date();
+    const presencasGeradas = gerarPresencasParaAluno(extrairDiaDaSemana(data.turmaSelecionada));
 
-    // Montamos o objeto final do aluno
-    const alunoData = {
-      // Usamos um ID alto para evitar conflitos, mas o backend deve gerir isso
-      id: Date.now(), 
-      alunoId: Date.now().toString(),
-      nome: studentName,
+  
+
+    // 4. CONSTRUÇÃO DO OBJETO CORRIGIDA: Alinhada com as suas interfaces
+    const alunoParaApi: AlunoParaForm = {
+      id: Date.now(), // ID temporário, o backend pode gerar um definitivo
+      alunoId: Date.now(), // `alunoId` agora é number, conforme a correção
+      nome: studentName.trim(),
       anoNascimento: "2000-01-01",
-      dataMatricula: currentDate.toLocaleDateString(),
+      dataMatricula: currentDate.toLocaleDateString("pt-BR"),
       telefoneComWhatsapp: "00000000000",
       informacoesAdicionais: {
         IdentificadorUnico: uuidv4(),
@@ -106,7 +94,7 @@ export default function TemporaryStudentRegistration({
         cep: "00000-000",
         complemento: "",
         data_de_nascimento_responsavel: "2000-01-01",
-        documento_do_responsavel: "00000000000",
+        documento_do_responsavel: "000.000.000-00",
         email_do_responsavel: "temporary@example.com",
         endereco: "Endereço Temporário",
         funcao_do_responsavel: "N/A",
@@ -120,27 +108,27 @@ export default function TemporaryStudentRegistration({
         telefone_comercial_do_responsavel: "",
         telefone_contato_emergencia: "00000000000",
         uniforme_do_aluno: "P",
-        uniforme: "P" // Mantido por consistência, se usado em algum lugar
+        uniforme: "P",
       },
       presencas: presencasGeradas,
-      foto: "",
+      foto: "", // Foto vazia por padrão para alunos temporários
     };
 
-    // O payload enviado para a API precisa corresponder à estrutura esperada
     const finalPayload: FormValuesStudent = {
-      ...formData,
-      aluno: alunoData,
-      modalidade: 'volei' // Especifica a modalidade
+      turmaSelecionada: data.turmaSelecionada,
+      aluno: alunoParaApi,
+      modalidade: "volei", // Especificamos a modalidade
     };
 
     try {
       await sendDataToApi([finalPayload]);
-      CorrigirDadosDefinitivos(); // Função para atualizar contadores da turma
+      await CorrigirDadosDefinitivos();
       setSuccessMessage("Aluno temporário cadastrado com sucesso!");
       reset();
-      handleCloseModal(); // Fecha o modal após o sucesso
+      handleCloseModal();
     } catch (error) {
       console.error("Erro ao enviar os dados do aluno temporário:", error);
+      alert("Ocorreu um erro ao cadastrar o aluno. Verifique o console.");
     } finally {
       setIsUpdating(false);
     }
@@ -162,7 +150,7 @@ export default function TemporaryStudentRegistration({
                 variant="outlined"
                 required
                 value={studentName}
-                onChange={handleStudentNameChange}
+                onChange={(e) => setStudentName(e.target.value)}
               />
             </Grid>
 
@@ -175,7 +163,8 @@ export default function TemporaryStudentRegistration({
                 fullWidth
                 required
                 variant="outlined"
-                
+                error={!!errors.turmaSelecionada}
+                helperText={errors.turmaSelecionada?.message}
               >
                 {turmasDisponiveis.map((turma) => (
                   <MenuItem key={turma.uuidTurma} value={turma.nome_da_turma}>
@@ -186,22 +175,12 @@ export default function TemporaryStudentRegistration({
             </Grid>
 
             <Grid item xs={12} sm={6}>
-              <Button
-                type="submit"
-                variant="contained"
-                disabled={isSubmitting || isUpdating}
-                fullWidth
-              >
+              <Button type="submit" variant="contained" disabled={isSubmitting || isUpdating} fullWidth>
                 {isUpdating ? "Cadastrando..." : "Cadastrar Aluno"}
               </Button>
             </Grid>
             <Grid item xs={12} sm={6}>
-              <Button
-                variant="contained"
-                color="error"
-                onClick={handleCloseModal}
-                fullWidth
-              >
+              <Button variant="contained" color="error" onClick={handleCloseModal} fullWidth>
                 Fechar
               </Button>
             </Grid>

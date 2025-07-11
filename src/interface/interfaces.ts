@@ -119,8 +119,7 @@ export interface Turma {
   capacidade_atual_da_turma: number;
   alunos: Aluno[];
   uuidTurma?: string;
-  // **CORREÇÃO 1:** diaDaSemana é um array de strings, não uma string opcional.
-  diaDaSemana: string[]; 
+ diaDaSemana: string[];
   horario?: string;
 }
 
