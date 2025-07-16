@@ -62,8 +62,24 @@ function CustomPagination({ selectedRows, allRows }: { selectedRows: GridRowSele
     return selectedRows as GridRowId[];
   };
 
-  const handleExport = (options: GridCsvExportOptions) =>
-    apiRef.current.exportDataAsCsv(options);
+  const handleExport = (options: GridCsvExportOptions) => {
+    // Define as colunas que devem ser exportadas (excluindo a coluna 'foto')
+    const fieldsToExport = [
+      'nome',
+      'anoNascimento', 
+      'alunoDocumento',
+      'modalidade_turma',
+      'categoria'
+    ];
+
+    // Combina as opções passadas com a configuração de campos
+    const exportOptions: GridCsvExportOptions = {
+      ...options,
+      fields: fieldsToExport, // Especifica quais colunas incluir na exportação
+    };
+
+    apiRef.current.exportDataAsCsv(exportOptions);
+  };
 
   return (
     <>
