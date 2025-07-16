@@ -14,6 +14,7 @@ import {
   GridCsvExportOptions,
   GridCsvGetRowsToExportParams,
   GridRowId,
+  GridRowSelectionModel,
 } from "@mui/x-data-grid";
 import Pagination from "@mui/material/Pagination";
 import PaginationItem from "@mui/material/PaginationItem";
@@ -31,6 +32,7 @@ import {
   IconButton,
   Snackbar,
   Alert,
+  Typography,
 } from "@mui/material";
 import DownloadingIcon from "@mui/icons-material/Downloading";
 import CloseIcon from "@mui/icons-material/Close";
@@ -45,40 +47,63 @@ const normalizeText = (text: any): string => {
 };
 
 // Componente de paginação customizada
-function CustomPagination() {
+function CustomPagination({ selectedRows, allRows }: { selectedRows: GridRowSelectionModel, allRows: GridRowsProp }) {
   const apiRef = useGridApiContext();
   const page = useGridSelector(apiRef, gridPageSelector);
   const pageCount = useGridSelector(apiRef, gridPageCountSelector);
 
-  const getFilteredRows = ({ apiRef }: GridCsvGetRowsToExportParams) =>
-    gridExpandedSortedRowIdsSelector(apiRef);
+  // Função para exportar apenas as linhas selecionadas
+  const getSelectedRows = ({ apiRef }: GridCsvGetRowsToExportParams) => {
+    // Se não há linhas selecionadas, exporta todas as linhas filtradas
+    if (selectedRows.length === 0) {
+      return gridExpandedSortedRowIdsSelector(apiRef);
+    }
+    // Retorna apenas as linhas selecionadas
+    return selectedRows as GridRowId[];
+  };
 
   const handleExport = (options: GridCsvExportOptions) =>
     apiRef.current.exportDataAsCsv(options);
 
   return (
     <>
-      <Pagination
-        color="primary"
-        variant="outlined"
-        shape="rounded"
-        page={page + 1}
-        count={pageCount}
-        // @ts-expect-error
-        renderItem={(props2) => <PaginationItem {...props2} disableRipple />}
-        onChange={(event: React.ChangeEvent<unknown>, value: number) =>
-          apiRef.current.setPage(value - 1)
-        }
-      />
-      <Button
-        onClick={() => handleExport({ getRowsToExport: getFilteredRows })}
-        sx={{ gap: "2px", display: "flex", alignItems: "center" }}
-        variant="contained"
-        color="secondary"
-      >
-        <DownloadingIcon />
-        Exportar colunas selecionadas
-      </Button>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+        <Pagination
+          color="primary"
+          variant="outlined"
+          shape="rounded"
+          page={page + 1}
+          count={pageCount}
+          // @ts-expect-error
+          renderItem={(props2) => <PaginationItem {...props2} disableRipple />}
+          onChange={(event: React.ChangeEvent<unknown>, value: number) =>
+            apiRef.current.setPage(value - 1)
+          }
+        />
+        
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            {selectedRows.length > 0 
+              ? `${selectedRows.length} linha(s) selecionada(s)`
+              : 'Nenhuma linha selecionada'
+            }
+          </Typography>
+          
+          <Button
+            onClick={() => handleExport({ getRowsToExport: getSelectedRows })}
+            sx={{ gap: "2px", display: "flex", alignItems: "center" }}
+            variant="contained"
+            color="secondary"
+            disabled={selectedRows.length === 0}
+          >
+            <DownloadingIcon />
+            {selectedRows.length > 0 
+              ? `Exportar ${selectedRows.length} selecionada(s)`
+              : 'Exportar selecionadas'
+            }
+          </Button>
+        </Box>
+      </Box>
     </>
   );
 }
@@ -96,6 +121,9 @@ export default function ListaDeAlunosProfs() {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [copiedText, copyToClipboard] = useCopyToClipboard();
   const [openSnackbar, setOpenSnackbar] = useState(false);
+  
+  // Estado para gerenciar as linhas selecionadas
+  const [rowSelectionModel, setRowSelectionModel] = useState<GridRowSelectionModel>([]);
 
   const [paginationModel, setPaginationModel] = useState({
     pageSize: PAGE_SIZE,
@@ -179,6 +207,11 @@ export default function ListaDeAlunosProfs() {
     setOpenSnackbar(false);
   };
 
+  // Função para lidar com mudanças na seleção de linhas
+  const handleRowSelectionModelChange = (newRowSelectionModel: GridRowSelectionModel) => {
+    setRowSelectionModel(newRowSelectionModel);
+  };
+
   // Preparação das linhas da tabela
   const rows: GridRowsProp = alunosComTurma.map(
     ({ aluno, nomeDaTurma, categoria }) => {
@@ -191,9 +224,7 @@ export default function ListaDeAlunosProfs() {
         nome: normalizeText(aluno.nome),
         anoNascimento: normalizeText(aluno.anoNascimento),
         
-       alunoDocumento: normalizeText(aluno.documento),
-
-       
+        alunoDocumento: normalizeText(aluno.documento),
 
         // Turma e/ou categoria
         modalidade_turma: nomeDaTurma,
@@ -229,39 +260,38 @@ export default function ListaDeAlunosProfs() {
       ),
     },
     // Nome do Aluno
-   {
-    field: "nome",
-    headerName: "Nome do Aluno",
-    // ocupa 1.5 “partes” do espaço flexível, mas não fica menor que 150px
-    flex: 1.5,
-    minWidth: 150,
-  },
-  {
-    field: "anoNascimento",
-    headerName: "Data Nasc.",
-    width: 120,
-  },
-  {
-    field: "alunoDocumento",
-    headerName: "Doc. do Aluno",
+    {
+      field: "nome",
+      headerName: "Nome do Aluno",
+      // ocupa 1.5 "partes" do espaço flexível, mas não fica menor que 150px
+      flex: 1.5,
+      minWidth: 150,
+    },
+    {
+      field: "anoNascimento",
+      headerName: "Data Nasc.",
+      width: 120,
+    },
+    {
+      field: "alunoDocumento",
+      headerName: "Doc. do Aluno",
       // ocupa 2 partes do espaço flexível, mínimo 200px
-     flex: 1.5,
-    minWidth: 150,
-  },
-  {
-    field: "modalidade_turma",
-    headerName: "Turma",
-    flex: 1,
-    minWidth: 120,
-  },
-  {
-    field: "categoria",
-    headerName: "Categoria",
-    // ocupa 1 parte do espaço flexível, mínimo 120px
-    flex: 1,
-    minWidth: 120,
-  },
-   
+      flex: 1.5,
+      minWidth: 150,
+    },
+    {
+      field: "modalidade_turma",
+      headerName: "Turma",
+      flex: 1,
+      minWidth: 120,
+    },
+    {
+      field: "categoria",
+      headerName: "Categoria",
+      // ocupa 1 parte do espaço flexível, mínimo 120px
+      flex: 1,
+      minWidth: 120,
+    },
   ];
 
   return (
@@ -277,13 +307,15 @@ export default function ListaDeAlunosProfs() {
       >
         <Box sx={{ height: 800, width: "95%", position: "relative", marginTop: "10px" }}>
           <StyledDataGrid
-            disableRowSelectionOnClick
-            checkboxSelection={false}
+            disableRowSelectionOnClick={false} // Permite seleção ao clicar na linha
+            checkboxSelection={true} // Habilita os checkboxes
+            rowSelectionModel={rowSelectionModel} // Estado da seleção
+            onRowSelectionModelChange={handleRowSelectionModelChange} // Handler para mudanças na seleção
             paginationModel={paginationModel}
             onPaginationModelChange={setPaginationModel}
             pageSizeOptions={[PAGE_SIZE]}
             slots={{
-              pagination: CustomPagination,
+              pagination: () => <CustomPagination selectedRows={rowSelectionModel} allRows={mergedRows} />,
               toolbar: GridToolbar,
             }}
             slotProps={{
@@ -331,3 +363,4 @@ export default function ListaDeAlunosProfs() {
     </>
   );
 }
+
